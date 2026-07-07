@@ -1,0 +1,106 @@
+id_station,nom,type,gouvernorat,latitude,longitude
+S01,Depot El Ghazala,source,Ariana,36.893,10.19
+S02,Depot Bizerte,source,Bizerte,37.2744,9.8739
+S03,Depot Sousse,source,Sousse,35.8256,10.6411
+S04,Depot Sfax,source,Sfax,34.7406,10.7603
+S05,Depot Gabes,source,Gabes,33.8815,10.0982
+D001,La Marsa,destination,Tunis,36.8782,10.3247
+D002,Carthage,destination,Tunis,36.8528,10.323
+D003,Le Bardo,destination,Tunis,36.8092,10.14
+D004,El Menzah,destination,Tunis,36.838,10.183
+D005,Bab Bhar,destination,Tunis,36.8,10.185
+D006,La Goulette,destination,Tunis,36.8181,10.305
+D007,Sidi Bou Said,destination,Tunis,36.871,10.347
+D008,El Omrane,destination,Tunis,36.818,10.165
+D009,Ezzouhour,destination,Tunis,36.792,10.14
+D010,El Kabaria,destination,Tunis,36.76,10.205
+D011,Ariana Ville,destination,Ariana,36.8665,10.194
+D012,Raoued,destination,Ariana,36.94,10.23
+D013,La Soukra,destination,Ariana,36.875,10.25
+D014,Ettadhamen,destination,Ariana,36.842,10.114
+D015,Kalaat el-Andalous,destination,Ariana,37.05,10.135
+D016,Sidi Thabet,destination,Ariana,36.916,10.073
+D017,Ben Arous,destination,Ben Arous,36.753,10.231
+D018,Hammam Lif,destination,Ben Arous,36.728,10.34
+D019,Rades,destination,Ben Arous,36.768,10.275
+D020,Megrine,destination,Ben Arous,36.766,10.236
+D021,Mornag,destination,Ben Arous,36.677,10.29
+D022,Ezzahra,destination,Ben Arous,36.744,10.308
+D023,Manouba,destination,Manouba,36.808,10.097
+D024,Den Den,destination,Manouba,36.81,10.12
+D025,Oued Ellil,destination,Manouba,36.823,10.06
+D026,Tebourba,destination,Manouba,36.832,9.842
+D027,Nabeul,destination,Nabeul,36.456,10.738
+D028,Hammamet,destination,Nabeul,36.4,10.616
+D029,Kelibia,destination,Nabeul,36.847,11.094
+D030,Korba,destination,Nabeul,36.578,10.858
+D031,Menzel Temime,destination,Nabeul,36.78,10.987
+D032,Grombalia,destination,Nabeul,36.602,10.5
+D033,Bizerte Ville,destination,Bizerte,37.2744,9.8739
+D034,Menzel Bourguiba,destination,Bizerte,37.15,9.789
+D035,Mateur,destination,Bizerte,37.04,9.666
+D036,Ras Jebel,destination,Bizerte,37.215,10.118
+D037,Sejnane,destination,Bizerte,37.056,9.238
+D038,Zaghouan,destination,Zaghouan,36.402,10.143
+D039,Beja Ville,destination,Beja,36.725,9.181
+D040,Medjez el-Bab,destination,Beja,36.649,9.613
+D041,Testour,destination,Beja,36.553,9.443
+D042,Jendouba Ville,destination,Jendouba,36.501,8.78
+D043,Tabarka,destination,Jendouba,36.954,8.758
+D044,Bou Salem,destination,Jendouba,36.611,8.972
+D045,Le Kef Ville,destination,Le Kef,36.182,8.715
+D046,Dahmani,destination,Le Kef,35.945,8.828
+D047,Siliana Ville,destination,Siliana,36.085,9.371
+D048,Sousse Ville,destination,Sousse,35.8256,10.6411
+D049,Msaken,destination,Sousse,35.728,10.58
+D050,Kalaa Kebira,destination,Sousse,35.872,10.535
+D051,Hammam Sousse,destination,Sousse,35.86,10.594
+D052,Akouda,destination,Sousse,35.869,10.566
+D053,Enfidha,destination,Sousse,36.135,10.38
+D054,Sidi Bou Ali,destination,Sousse,35.952,10.47
+D055,Kalaa Seghira,destination,Sousse,35.806,10.553
+D056,Monastir Ville,destination,Monastir,35.778,10.826
+D057,Moknine,destination,Monastir,35.633,10.901
+D058,Jemmal,destination,Monastir,35.621,10.755
+D059,Ksar Hellal,destination,Monastir,35.645,10.89
+D060,Sahline,destination,Monastir,35.751,10.713
+D061,Mahdia Ville,destination,Mahdia,35.504,11.062
+D062,Ksour Essef,destination,Mahdia,35.418,11.0
+D063,Chebba,destination,Mahdia,35.237,11.115
+D064,El Jem,destination,Mahdia,35.3,10.713
+D065,Sfax Ville,destination,Sfax,34.7406,10.7603
+D066,Sakiet Ezzit,destination,Sfax,34.8,10.77
+D067,Sakiet Eddaier,destination,Sfax,34.778,10.782
+D068,Chihia,destination,Sfax,34.745,10.7
+D069,Thyna,destination,Sfax,34.667,10.703
+D070,Mahares,destination,Sfax,34.53,10.5
+D071,Kerkennah,destination,Sfax,34.69,11.18
+D072,Jebeniana,destination,Sfax,35.035,10.905
+D073,El Hencha,destination,Sfax,35.08,10.53
+D074,Kairouan Ville,destination,Kairouan,35.678,10.096
+D075,Sbikha,destination,Kairouan,35.933,10.0
+D076,Haffouz,destination,Kairouan,35.633,9.683
+D077,Chebika,destination,Kairouan,35.73,9.913
+D078,Kasserine Ville,destination,Kasserine,35.167,8.836
+D079,Sbeitla,destination,Kasserine,35.237,9.12
+D080,Feriana,destination,Kasserine,34.95,8.57
+D081,Sidi Bouzid Ville,destination,Sidi Bouzid,35.038,9.484
+D082,Regueb,destination,Sidi Bouzid,34.858,9.783
+D083,Meknassy,destination,Sidi Bouzid,34.626,9.612
+D084,Gabes Ville,destination,Gabes,33.8815,10.0982
+D085,Mareth,destination,Gabes,33.64,10.28
+D086,El Hamma,destination,Gabes,33.886,9.795
+D087,Metouia,destination,Gabes,33.967,10.0
+D088,Medenine Ville,destination,Medenine,33.354,10.505
+D089,Houmt Souk (Djerba),destination,Medenine,33.875,10.857
+D090,Zarzis,destination,Medenine,33.504,11.112
+D091,Ben Gardane,destination,Medenine,33.138,11.22
+D092,Tataouine Ville,destination,Tataouine,32.929,10.451
+D093,Ghomrassen,destination,Tataouine,33.058,10.346
+D094,Gafsa Ville,destination,Gafsa,34.425,8.784
+D095,Metlaoui,destination,Gafsa,34.32,8.4
+D096,El Ksar,destination,Gafsa,34.395,8.805
+D097,Tozeur Ville,destination,Tozeur,33.92,8.133
+D098,Nefta,destination,Tozeur,33.873,7.878
+D099,Kebili Ville,destination,Kebili,33.704,8.969
+D100,Douz,destination,Kebili,33.466,9.02

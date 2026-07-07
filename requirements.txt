@@ -1,0 +1,19 @@
+# API & serveur
+fastapi
+uvicorn[standard]
+
+# Base de données / ORM
+sqlalchemy
+
+# Optimisation (MDVRP)
+ortools
+
+# Données & apprentissage automatique
+pandas
+scikit-learn
+
+# Géocodage & distances
+geopy
+
+# Cartographie
+folium
