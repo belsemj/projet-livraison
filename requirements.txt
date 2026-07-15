@@ -17,3 +17,8 @@ geopy
 
 # Cartographie
 folium
+
+alembic==1.18.5
+SQLAlchemy==2.0.51
+
+
