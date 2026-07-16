@@ -19,3 +19,5 @@ class Chauffeur(Base):
 
     station = relationship("Station", back_populates="chauffeurs")
     tournees = relationship("Tournee", back_populates="chauffeur")
+    # Binome fixe (D12) : cote inverse. uselist=False -> un seul vehicule par chauffeur.
+    vehicule = relationship("Vehicule", back_populates="chauffeur", uselist=False)

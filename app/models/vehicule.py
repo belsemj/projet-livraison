@@ -13,6 +13,15 @@ class Vehicule(Base):
     type_caisson = Column(String(15), nullable=False)
     id_station = Column(Integer, ForeignKey("station.id_station"), nullable=False)
 
+    # Binome fixe chauffeur <-> vehicule (D12) : un chauffeur attitre par vehicule.
+    # unique -> relation 1:1 ; nullable -> reserve / non assure sans chauffeur.
+    id_chauffeur = Column(
+        Integer,
+        ForeignKey("chauffeur.id_chauffeur"),
+        unique=True,
+        nullable=True,
+    )
+
     __table_args__ = (
         CheckConstraint("capacite > 0", name="chk_veh_cap"),
         CheckConstraint(
@@ -26,3 +35,4 @@ class Vehicule(Base):
 
     station = relationship("Station", back_populates="vehicules")
     tournees = relationship("Tournee", back_populates="vehicule")
+    chauffeur = relationship("Chauffeur", back_populates="vehicule")
