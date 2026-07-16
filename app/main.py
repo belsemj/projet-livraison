@@ -1,9 +1,10 @@
-"""Point d'entrée minimal de l'API — sert à vérifier l'environnement.
-Le développement CRUD réel débutera en semaine 3."""
-
+from app.routers import station, destination, lot
 from fastapi import FastAPI
 
 app = FastAPI(title="Application d'affectation des livraisons")
+app.include_router(station.router)
+app.include_router(destination.router)
+app.include_router(lot.router)
 
 
 @app.get("/")
