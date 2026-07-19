@@ -1,9 +1,9 @@
 id_station,nom,type,gouvernorat,latitude,longitude
 S01,Depot El Ghazala,source,Ariana,36.893,10.19
-S02,Depot Bizerte,source,Bizerte,37.2633,9.8485
-S03,Depot Sousse,source,Sousse,35.7821,10.6686
-S04,Depot Sfax,source,Sfax,34.7486,10.7733
-S05,Depot Gabes,source,Gabes,33.8653,10.0852
+S02,Depot Bizerte,source,Bizerte,37.2744,9.8739
+S03,Depot Sousse,source,Sousse,35.8256,10.6411
+S04,Depot Sfax,source,Sfax,34.7406,10.7603
+S05,Depot Gabes,source,Gabes,33.8815,10.0982
 D001,La Marsa,destination,Tunis,36.8782,10.3247
 D002,Carthage,destination,Tunis,36.8528,10.323
 D003,Le Bardo,destination,Tunis,36.8092,10.14

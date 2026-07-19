@@ -1,5 +1,6 @@
 """
-Construction de la matrice de distances geodesiques (BF2).
+Construction, controle et mise en cache de la matrice de distances
+geodesiques (BF2).
 
 Ordre canonique des noeuds :
     index 0 .. 4    -> stations (depots), id_station croissant
@@ -11,9 +12,22 @@ et ne doit plus etre modifiee une fois la matrice generee.
 D13 : la matrice stockee reste brute (distances geodesiques exactes).
 Le plancher applique aux noeuds geographiquement confondus est une regle
 metier, portee par matrice_pour_solveur() et non par le stockage.
+
+D14 : les coordonnees des 4 depots regionaux, initialement confondues avec
+le chef-lieu de leur gouvernorat, ont ete re-geocodees en zone industrielle
+a titre provisoire. D14 traite la cause, D13 couvrait le symptome : depuis
+D14 la matrice ne contient plus de distance nulle hors diagonale, et
+matrice_pour_solveur() devient un garde-fou dormant.
+
+Cache (S4 J2) : la matrice est persistee dans data/ et accompagnee d'un
+temoin d'integrite (matrice_meta.json). obtenir_matrice() recharge le cache
+s'il est valide et le reconstruit sinon.
 """
 
+import hashlib
+import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -24,6 +38,10 @@ from app.models.destination import Destination
 
 NB_STATIONS = 5
 DOSSIER_DONNEES = Path("data")
+
+# Version du format de cache. A incrementer si la structure des fichiers
+# persistes change : force le recalcul chez tous les utilisateurs.
+VERSION_FORMAT = 1
 
 # Course intra-urbaine moyenne : hypothese de travail, a reviser des que
 # les coordonnees GPS reelles des depots seront connues (question Q1).
@@ -95,6 +113,9 @@ def matrice_pour_solveur(matrice: np.ndarray,
     destination livrable produit une distance nulle que le solveur
     interpreterait comme une livraison gratuite.
 
+    Depuis D14 aucune paire n'est plus concernee ; la fonction est conservee
+    comme garde-fou si une future destination venait a coincider avec un depot.
+
     La matrice d'origine n'est pas modifiee.
     """
     ajustee = matrice.copy()
@@ -144,3 +165,86 @@ def sauvegarder(matrice: np.ndarray, noeuds: list[Noeud],
         lignes_m.append(str(nd.index) + "," + ",".join(f"{v:.3f}" for v in matrice[i]))
     (dossier / "matrice_geodesique.csv").write_text("\n".join(lignes_m),
                                                     encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Couche de persistance et de cache (S4 J2)
+# ---------------------------------------------------------------------------
+
+def empreinte_noeuds(noeuds: list[Noeud]) -> str:
+    """
+    Empreinte SHA-256 de l'ensemble ordonne des noeuds.
+
+    Porte sur (index, type, id, latitude, longitude) : toute correction de
+    coordonnees, tout ajout ou retrait de noeud change l'empreinte et invalide
+    le cache. La creation d'un lot ne change rien : un lot n'est pas un noeud.
+    """
+    h = hashlib.sha256()
+    for nd in noeuds:
+        h.update(f"{nd.index}|{nd.type}|{nd.id_entite}|"
+                 f"{nd.latitude:.6f}|{nd.longitude:.6f}\n".encode("utf-8"))
+    return h.hexdigest()
+
+
+def ecrire_metadonnees(noeuds: list[Noeud], dossier: Path = DOSSIER_DONNEES) -> None:
+    """Ecrit data/matrice_meta.json (temoin d'integrite du cache)."""
+    dossier.mkdir(exist_ok=True)
+    meta = {
+        "version_format": VERSION_FORMAT,
+        "genere_le": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "nb_noeuds": len(noeuds),
+        "nb_stations": NB_STATIONS,
+        "type_distance": "geodesique_km",
+        "empreinte": empreinte_noeuds(noeuds),
+    }
+    (dossier / "matrice_meta.json").write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def lire_metadonnees(dossier: Path = DOSSIER_DONNEES) -> dict | None:
+    """Renvoie le contenu de matrice_meta.json, ou None s'il est absent/illisible."""
+    chemin = dossier / "matrice_meta.json"
+    if not chemin.exists():
+        return None
+    try:
+        return json.loads(chemin.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def obtenir_matrice(db, dossier: Path = DOSSIER_DONNEES,
+                    forcer: bool = False) -> tuple[np.ndarray, list[Noeud], str]:
+    """
+    Renvoie (matrice, noeuds, motif).
+
+    Charge le cache s'il est valide, le reconstruit sinon. Le motif indique
+    ce qui s'est passe : 'cache', 'absent', 'empreinte', 'version' ou 'forcee'.
+    """
+    noeuds = charger_noeuds(db)
+    chemin_npy = dossier / "matrice_geodesique.npy"
+
+    motif = None
+    if forcer:
+        motif = "forcee"
+    elif not chemin_npy.exists():
+        motif = "absent"
+    else:
+        meta = lire_metadonnees(dossier)
+        if meta is None:
+            motif = "absent"
+        elif meta.get("version_format") != VERSION_FORMAT:
+            motif = "version"
+        elif meta.get("empreinte") != empreinte_noeuds(noeuds):
+            motif = "empreinte"
+
+    if motif is None:
+        return np.load(chemin_npy), noeuds, "cache"
+
+    matrice = construire_matrice(noeuds)
+    anomalies = controler(matrice, noeuds)
+    for a in anomalies:
+        print(f"  [ANOMALIE] {a}")
+    sauvegarder(matrice, noeuds, dossier)
+    ecrire_metadonnees(noeuds, dossier)
+    return matrice, noeuds, motif

@@ -27,3 +27,4 @@ __pycache__/
 # Matrices regenerables (python generer_matrice.py)
 data/matrice_geodesique.npy
 data/matrice_geodesique.csv
+data/matrice_meta.json
