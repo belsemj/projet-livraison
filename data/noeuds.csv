@@ -1,0 +1,106 @@
+index,type,id_entite,nom,latitude,longitude
+0,station,1,Depot El Ghazala,36.893,10.19
+1,station,2,Depot Bizerte,37.2744,9.8739
+2,station,3,Depot Sousse,35.8256,10.6411
+3,station,4,Depot Sfax,34.7406,10.7603
+4,station,5,Depot Gabes,33.8815,10.0982
+5,destination,1,La Marsa,36.8782,10.3247
+6,destination,2,Carthage,36.8528,10.323
+7,destination,3,Le Bardo,36.8092,10.14
+8,destination,4,El Menzah,36.838,10.183
+9,destination,5,Bab Bhar,36.8,10.185
+10,destination,6,La Goulette,36.8181,10.305
+11,destination,7,Sidi Bou Said,36.871,10.347
+12,destination,8,El Omrane,36.818,10.165
+13,destination,9,Ezzouhour,36.792,10.14
+14,destination,10,El Kabaria,36.76,10.205
+15,destination,11,Ariana Ville,36.8665,10.194
+16,destination,12,Raoued,36.94,10.23
+17,destination,13,La Soukra,36.875,10.25
+18,destination,14,Ettadhamen,36.842,10.114
+19,destination,15,Kalaat el-Andalous,37.05,10.135
+20,destination,16,Sidi Thabet,36.916,10.073
+21,destination,17,Ben Arous,36.753,10.231
+22,destination,18,Hammam Lif,36.728,10.34
+23,destination,19,Rades,36.768,10.275
+24,destination,20,Megrine,36.766,10.236
+25,destination,21,Mornag,36.677,10.29
+26,destination,22,Ezzahra,36.744,10.308
+27,destination,23,Manouba,36.808,10.097
+28,destination,24,Den Den,36.81,10.12
+29,destination,25,Oued Ellil,36.823,10.06
+30,destination,26,Tebourba,36.832,9.842
+31,destination,27,Nabeul,36.456,10.738
+32,destination,28,Hammamet,36.4,10.616
+33,destination,29,Kelibia,36.847,11.094
+34,destination,30,Korba,36.578,10.858
+35,destination,31,Menzel Temime,36.78,10.987
+36,destination,32,Grombalia,36.602,10.5
+37,destination,33,Bizerte Ville,37.2744,9.8739
+38,destination,34,Menzel Bourguiba,37.15,9.789
+39,destination,35,Mateur,37.04,9.666
+40,destination,36,Ras Jebel,37.215,10.118
+41,destination,37,Sejnane,37.056,9.238
+42,destination,38,Zaghouan,36.402,10.143
+43,destination,39,Beja Ville,36.725,9.181
+44,destination,40,Medjez el-Bab,36.649,9.613
+45,destination,41,Testour,36.553,9.443
+46,destination,42,Jendouba Ville,36.501,8.78
+47,destination,43,Tabarka,36.954,8.758
+48,destination,44,Bou Salem,36.611,8.972
+49,destination,45,Le Kef Ville,36.182,8.715
+50,destination,46,Dahmani,35.945,8.828
+51,destination,47,Siliana Ville,36.085,9.371
+52,destination,48,Sousse Ville,35.8256,10.6411
+53,destination,49,Msaken,35.728,10.58
+54,destination,50,Kalaa Kebira,35.872,10.535
+55,destination,51,Hammam Sousse,35.86,10.594
+56,destination,52,Akouda,35.869,10.566
+57,destination,53,Enfidha,36.135,10.38
+58,destination,54,Sidi Bou Ali,35.952,10.47
+59,destination,55,Kalaa Seghira,35.806,10.553
+60,destination,56,Monastir Ville,35.778,10.826
+61,destination,57,Moknine,35.633,10.901
+62,destination,58,Jemmal,35.621,10.755
+63,destination,59,Ksar Hellal,35.645,10.89
+64,destination,60,Sahline,35.751,10.713
+65,destination,61,Mahdia Ville,35.504,11.062
+66,destination,62,Ksour Essef,35.418,11.0
+67,destination,63,Chebba,35.237,11.115
+68,destination,64,El Jem,35.3,10.713
+69,destination,65,Sfax Ville,34.7406,10.7603
+70,destination,66,Sakiet Ezzit,34.8,10.77
+71,destination,67,Sakiet Eddaier,34.778,10.782
+72,destination,68,Chihia,34.745,10.7
+73,destination,69,Thyna,34.667,10.703
+74,destination,70,Mahares,34.53,10.5
+75,destination,71,Kerkennah,34.69,11.18
+76,destination,72,Jebeniana,35.035,10.905
+77,destination,73,El Hencha,35.08,10.53
+78,destination,74,Kairouan Ville,35.678,10.096
+79,destination,75,Sbikha,35.933,10.0
+80,destination,76,Haffouz,35.633,9.683
+81,destination,77,Chebika,35.73,9.913
+82,destination,78,Kasserine Ville,35.167,8.836
+83,destination,79,Sbeitla,35.237,9.12
+84,destination,80,Feriana,34.95,8.57
+85,destination,81,Sidi Bouzid Ville,35.038,9.484
+86,destination,82,Regueb,34.858,9.783
+87,destination,83,Meknassy,34.626,9.612
+88,destination,84,Gabes Ville,33.8815,10.0982
+89,destination,85,Mareth,33.64,10.28
+90,destination,86,El Hamma,33.886,9.795
+91,destination,87,Metouia,33.967,10.0
+92,destination,88,Medenine Ville,33.354,10.505
+93,destination,89,Houmt Souk (Djerba),33.875,10.857
+94,destination,90,Zarzis,33.504,11.112
+95,destination,91,Ben Gardane,33.138,11.22
+96,destination,92,Tataouine Ville,32.929,10.451
+97,destination,93,Ghomrassen,33.058,10.346
+98,destination,94,Gafsa Ville,34.425,8.784
+99,destination,95,Metlaoui,34.32,8.4
+100,destination,96,El Ksar,34.395,8.805
+101,destination,97,Tozeur Ville,33.92,8.133
+102,destination,98,Nefta,33.873,7.878
+103,destination,99,Kebili Ville,33.704,8.969
+104,destination,100,Douz,33.466,9.02

@@ -23,3 +23,7 @@ __pycache__/
 
 # Variables d'environnement
 .env
+
+# Matrices regenerables (python generer_matrice.py)
+data/matrice_geodesique.npy
+data/matrice_geodesique.csv
