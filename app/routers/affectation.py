@@ -7,7 +7,7 @@ apparaitre dans plusieurs affectations.
 """
 
 from typing import Optional
-
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -24,16 +24,18 @@ INTROUVABLE = {404: {"description": "Affectation introuvable"}}
             summary="Lister les affectations")
 def list_affectations(
     id_tournee: Optional[int] = Query(default=None, description="Filtrer par tournee"),
+    id_run: Optional[int] = Query(default=None,
+                                  description="Filtrer par execution du solveur (jointure sur tournee)"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
 ):
     """
-    Liste les affectations, filtrable par tournee.
-
+    Liste les affectations, filtrable par tournee ou par execution du solveur.
     Renvoie une liste vide tant que le solveur n'a pas ete execute.
     """
-    return crud.get_affectations(db, id_tournee=id_tournee, skip=skip, limit=limit)
+    return crud.get_affectations(db, id_tournee=id_tournee, id_run=id_run,
+                                 skip=skip, limit=limit)
 
 
 @router.get("/{id_affectation}", response_model=AffectationRead,
