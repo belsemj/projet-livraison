@@ -1,4 +1,13 @@
+"""
+Consultation des affectations lot -> tournee (lecture seule).
+
+Une affectation represente la livraison d'un lot, ou d'une fraction de lot,
+par une tournee donnee. Le fractionnement etant autorise, un meme lot peut
+apparaitre dans plusieurs affectations.
+"""
+
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -8,17 +17,29 @@ from app.schemas.affectation import AffectationRead
 
 router = APIRouter(prefix="/affectations", tags=["affectations"])
 
+INTROUVABLE = {404: {"description": "Affectation introuvable"}}
 
-@router.get("/", response_model=list[AffectationRead])
+
+@router.get("/", response_model=list[AffectationRead],
+            summary="Lister les affectations")
 def list_affectations(
     id_tournee: Optional[int] = Query(default=None, description="Filtrer par tournee"),
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
 ):
+    """
+    Liste les affectations, filtrable par tournee.
+
+    Renvoie une liste vide tant que le solveur n'a pas ete execute.
+    """
     return crud.get_affectations(db, id_tournee=id_tournee, skip=skip, limit=limit)
 
 
-@router.get("/{id_affectation}", response_model=AffectationRead)
+@router.get("/{id_affectation}", response_model=AffectationRead,
+            summary="Lire une affectation", responses=INTROUVABLE)
 def read_affectation(id_affectation: int, db: Session = Depends(get_db)):
+    """Detail d'une affectation : lot concerne, quantite livree, ordre de passage."""
     obj = crud.get_affectation(db, id_affectation)
     if obj is None:
         raise HTTPException(status_code=404, detail="Affectation introuvable")

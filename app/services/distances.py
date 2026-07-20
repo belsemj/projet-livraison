@@ -248,3 +248,82 @@ def obtenir_matrice(db, dossier: Path = DOSSIER_DONNEES,
     sauvegarder(matrice, noeuds, dossier)
     ecrire_metadonnees(noeuds, dossier)
     return matrice, noeuds, motif
+
+# ---------------------------------------------------------------------------
+# Matrice routiere (S4 J3) - lecture seule
+# ---------------------------------------------------------------------------
+#
+# Contrairement a la matrice geodesique, la matrice routiere ne peut pas etre
+# reconstruite a la demande : elle exige la cle OpenRouteService et 4 requetes
+# reseau. Le service se contente donc de la lire et de signaler son etat ;
+# la regeneration reste du ressort de scripts/build_distances.py.
+#
+# D16 : la matrice routiere est asymetrique. L'ordre (i, j) est significatif,
+# controler() ne lui est donc pas applicable.
+
+
+FICHIER_ROUTIER = "matrice_routiere.npy"
+META_ROUTIER = "matrice_routiere_meta.json"
+
+
+def lire_metadonnees_routieres(dossier: Path = DOSSIER_DONNEES) -> dict | None:
+    chemin = dossier / META_ROUTIER
+    if not chemin.exists():
+        return None
+    try:
+        return json.loads(chemin.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def controler_routier(matrice: np.ndarray, noeuds: list[Noeud]) -> list[str]:
+    """
+    Controles applicables a une matrice asymetrique : dimension, diagonale
+    nulle, absence de zero hors diagonale. La symetrie n'est PAS verifiee.
+    """
+    anomalies: list[str] = []
+    n = len(noeuds)
+    if matrice.shape != (n, n):
+        anomalies.append(f"dimension {matrice.shape}, attendue ({n}, {n})")
+        return anomalies
+    if not np.allclose(np.diag(matrice), 0):
+        anomalies.append("diagonale non nulle")
+    hors_diag = ~np.eye(n, dtype=bool)
+    for i, j in np.argwhere((matrice == 0) & hors_diag):
+        anomalies.append(
+            f"distance routiere nulle de {noeuds[i].nom} (index {i}) vers "
+            f"{noeuds[j].nom} (index {j})"
+        )
+    return anomalies
+
+
+def obtenir_matrice_routiere(db, dossier: Path = DOSSIER_DONNEES
+                             ) -> tuple[np.ndarray, list[Noeud], str]:
+    """
+    Renvoie (matrice, noeuds, statut).
+
+    statut : 'valide'   -> fichier present, empreinte conforme
+             'perimee'  -> fichier present mais noeuds modifies depuis la
+                           generation : la matrice est servie telle quelle,
+                           l'appelant doit alerter.
+
+    Leve FileNotFoundError si la matrice ou son temoin sont absents : il faut
+    alors relancer scripts/build_distances.py.
+    """
+    noeuds = charger_noeuds(db)
+    chemin = dossier / FICHIER_ROUTIER
+
+    if not chemin.exists():
+        raise FileNotFoundError(
+            f"{chemin} absente : relancer scripts/build_distances.py"
+        )
+    meta = lire_metadonnees_routieres(dossier)
+    if meta is None:
+        raise FileNotFoundError(
+            f"{dossier / META_ROUTIER} absent ou illisible : "
+            "matrice routiere non certifiable"
+        )
+
+    matrice = np.load(chemin)
+    statut = "valide" if meta.get("empreinte") == empreinte_noeuds(noeuds) else "perimee"
+    return matrice, noeuds, statut
