@@ -15,10 +15,10 @@ index,type,id_entite,nom,latitude,longitude
 13,destination,9,Ezzouhour,36.792,10.14
 14,destination,10,El Kabaria,36.76,10.205
 15,destination,11,Ariana Ville,36.8665,10.194
-16,destination,12,Raoued,36.94,10.23
+16,destination,12,Raoued,36.953597,10.189194
 17,destination,13,La Soukra,36.875,10.25
 18,destination,14,Ettadhamen,36.842,10.114
-19,destination,15,Kalaat el-Andalous,37.05,10.135
+19,destination,15,Kalaat el-Andalous,37.062451,10.118145
 20,destination,16,Sidi Thabet,36.916,10.073
 21,destination,17,Ben Arous,36.753,10.231
 22,destination,18,Hammam Lif,36.728,10.34
@@ -90,7 +90,7 @@ index,type,id_entite,nom,latitude,longitude
 88,destination,84,Gabes Ville,33.8815,10.0982
 89,destination,85,Mareth,33.64,10.28
 90,destination,86,El Hamma,33.886,9.795
-91,destination,87,Metouia,33.967,10.0
+91,destination,87,Metouia,33.958906,10.001434
 92,destination,88,Medenine Ville,33.354,10.505
 93,destination,89,Houmt Souk (Djerba),33.875,10.857
 94,destination,90,Zarzis,33.504,11.112

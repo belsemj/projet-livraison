@@ -29,3 +29,5 @@ data/matrice_geodesique.npy
 data/matrice_geodesique.csv
 data/matrice_meta.json
 *.bak
+
+.env

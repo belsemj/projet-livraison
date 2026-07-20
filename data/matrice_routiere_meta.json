@@ -1,0 +1,8 @@
+{
+  "type": "routier",
+  "source": "openrouteservice / driving-car",
+  "nb_noeuds": 105,
+  "empreinte": "87b05e4f3ca9c14cd9565e38db8a7de4fb6209a47a4ee9093d2679987312be0e",
+  "symetrique": false,
+  "paires_non_routables": []
+}

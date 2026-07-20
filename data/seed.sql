@@ -21,10 +21,10 @@ INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) 
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (9, 'Ezzouhour', 'Tunis', 36.792, 10.14);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (10, 'El Kabaria', 'Tunis', 36.76, 10.205);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (11, 'Ariana Ville', 'Ariana', 36.8665, 10.194);
-INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (12, 'Raoued', 'Ariana', 36.94, 10.23);
+INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (12, 'Raoued', 'Ariana', 36.953597, 10.189194);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (13, 'La Soukra', 'Ariana', 36.875, 10.25);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (14, 'Ettadhamen', 'Ariana', 36.842, 10.114);
-INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (15, 'Kalaat el-Andalous', 'Ariana', 37.05, 10.135);
+INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (15, 'Kalaat el-Andalous', 'Ariana', 37.062451, 10.118145);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (16, 'Sidi Thabet', 'Ariana', 36.916, 10.073);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (17, 'Ben Arous', 'Ben Arous', 36.753, 10.231);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (18, 'Hammam Lif', 'Ben Arous', 36.728, 10.34);
@@ -96,7 +96,7 @@ INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) 
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (84, 'Gabes Ville', 'Gabes', 33.8815, 10.0982);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (85, 'Mareth', 'Gabes', 33.64, 10.28);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (86, 'El Hamma', 'Gabes', 33.886, 9.795);
-INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (87, 'Metouia', 'Gabes', 33.967, 10.0);
+INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (87, 'Metouia', 'Gabes', 33.958906, 10.001434);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (88, 'Medenine Ville', 'Medenine', 33.354, 10.505);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (89, 'Houmt Souk (Djerba)', 'Medenine', 33.875, 10.857);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (90, 'Zarzis', 'Medenine', 33.504, 11.112);
