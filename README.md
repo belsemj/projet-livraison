@@ -108,3 +108,13 @@ D23 — Flotte mobilisable par le solveur. Un véhicule entre dans la flotte si 
 D24 — Réactivation du chauffeur 12. Chauffeur 12 (Tarek F., station 3) repassé de conge à actif et apparié au véhicule 12 (réfrigéré, capacité 18, station 3). Motif : la capacité réfrigérée mobilisable (16) était inférieure au volume des lots réfrigérés (16,2), rendant le problème infaisable. Modification du jeu de test, non du modèle — à confirmer par M. Zghili, qui peut préférer assumer le déficit.
 D25 — Doublon Jebeniana. Le remplacement de Kerkennah (S4 J3) a introduit une seconde destination nommée Jebeniana, à ~400 m de l'existante. Renommage en Jebeniana Est (id 71) et Jebeniana Centre (id 72) plutôt que fusion, pour préserver l'indexation canonique et éviter la régénération des matrices. Les deux restent des points de livraison distincts. Note : le plancher D13 (3 km) s'applique à cette paire, dont la distance réelle est de ~0,4 km.
 D26 — Mise à l'échelle des volumes. OR-Tools n'accepte que des entiers dans une dimension de capacité. Volumes (0,11 à 1,58) et capacités convertis en centièmes (×100) à l'entrée du solveur, conversion inverse à l'écriture des résultats.
+D29 | S5 J2 | Contrainte de caisson implementee par restriction du domaine
+de VehicleVar (SetValues), et non par SetAllowedVehiclesForIndex : le typemap
+SWIG de cette methode est defaillant en ortools 9.15 (absl::Span<int const>
+non converti, quelle que soit la forme de la sequence Python). La valeur -1
+est maintenue dans le domaine pour preserver l'effet des disjonctions D28.
+
+D30 | S5 J2 | Surcout de l'hypothese B mesure a budget de temps egal (60 s) :
+3 130,0 km sans contrainte contre 4 321,6 km avec, soit +38,1 %, a service
+identique (120/120 lots livres). La contrainte est rendue debrayable
+(parametre caissons) pour que la mesure reste reproductible.

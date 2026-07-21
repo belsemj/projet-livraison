@@ -1,19 +1,21 @@
 """
-Solveur MDVRP (OR-Tools) -- squelette S5 J1.
+Solveur MDVRP (OR-Tools) -- S5 J2.
 
 Consomme le ContexteSolveur produit par matrice_etendue.construire_contexte()
 et renvoie une solution exploitable : une tournee par vehicule, plus la liste
 des lots non servis.
 
-Perimetre du J1 : distance + capacite + disjonctions penalisees.
-Les contraintes de caisson (SetAllowedVehiclesForIndex, hypothese B) arrivent
-au J2 ; en attendant, tout vehicule peut porter tout lot.
+Perimetre du J2 : distance + capacite + disjonctions penalisees + caissons.
 
 Disjonctions (D28) : chaque noeud de livraison est optionnel, moyennant une
 penalite. Sans cela, la moindre insuffisance de capacite fait echouer la
 resolution en renvoyant None, sans diagnostic. Avec, le solveur livre ce
 qu'il peut et signale le reste -- comportement attendu d'un outil
 d'exploitation.
+
+Caissons (hypothese B) : chaque lot est restreint aux vehicules dont le
+caisson couvre son exigence. La contrainte est debrayable (caissons=False)
+afin de mesurer son surcout a budget de temps egal.
 """
 
 from dataclasses import dataclass, field
@@ -28,6 +30,28 @@ from app.services.matrice_etendue import ContexteSolveur, ECHELLE
 PENALITE_ABANDON_M = 5_000_000
 
 LIMITE_SECONDES = 10
+
+# ---------------------------------------------------------------------------
+# Compatibilite caisson (hypothese B, decision D-serie)
+#
+# Cle   : type de caisson equipant le vehicule
+# Valeur: types de lots que ce vehicule peut transporter
+#
+# Un caisson specialise sert aussi le standard (il est plus contraignant
+# que necessaire, jamais moins). Deux specialises ne se servent pas
+# mutuellement : un caisson refrigere n'offre aucune garantie de securite,
+# et reciproquement.
+# ---------------------------------------------------------------------------
+CAISSONS_COUVERTS: dict[str, frozenset[str]] = {
+    "standard": frozenset({"standard"}),
+    "refrigere": frozenset({"standard", "refrigere"}),
+    "securise": frozenset({"standard", "securise"}),
+}
+
+
+def couvre(type_vehicule: str, caisson_requis: str) -> bool:
+    """Le caisson du vehicule satisfait-il l'exigence du lot ?"""
+    return caisson_requis in CAISSONS_COUVERTS.get(type_vehicule, frozenset())
 
 
 @dataclass
@@ -56,6 +80,7 @@ class Resultat:
 def resoudre(ctx: ContexteSolveur,
              limite_secondes: int = LIMITE_SECONDES,
              penalite: int = PENALITE_ABANDON_M,
+             caissons: bool = True,
              journal: bool = False) -> Resultat:
 
     manager = pywrapcp.RoutingIndexManager(
@@ -87,6 +112,11 @@ def resoudre(ctx: ContexteSolveur,
         "Capacite",
     )
 
+    # --- contraintes de caisson (hypothese B) -----------------------------
+    # Debrayable pour mesurer le surcout de la contrainte a budget egal.
+    if caissons:
+        restrictions = _restreindre_par_caisson(ctx, manager, routing)
+
     # --- disjonctions : un lot peut rester non servi (D28) ----------------
     for lot in ctx.lots:
         routing.AddDisjunction([manager.NodeToIndex(lot.index)], penalite)
@@ -107,6 +137,46 @@ def resoudre(ctx: ContexteSolveur,
         return Resultat([], [l.id_lot for l in ctx.lots], 0, "echec")
 
     return _extraire(ctx, manager, routing, solution)
+
+
+def _restreindre_par_caisson(ctx: ContexteSolveur, manager, routing) -> dict[int, list[int]]:
+    """
+    Limite chaque lot aux vehicules dont le caisson couvre son exigence.
+
+    Le rang du vehicule (v.rang) est l'identifiant attendu par OR-Tools :
+    c'est la position dans les tableaux starts/ends passes au manager, pas
+    l'id_vehicule de la base.
+
+    Passe par VehicleVar().SetValues() plutot que par
+    SetAllowedVehiclesForIndex() : le typemap SWIG de cette derniere est
+    defaillant en ortools 9.15 (absl::Span<int const> non converti, quelle
+    que soit la forme de la sequence Python passee).
+    La valeur -1 doit figurer dans le domaine : c'est celle que prend la
+    variable quand le noeud n'est visite par aucun vehicule. L'omettre
+    rendrait la disjonction inoperante et ferait echouer la resolution
+    sans diagnostic des la premiere infaisabilite.
+
+    Doit etre appele avant SolveWithParameters ; apres, sans effet.
+    """
+    restrictions: dict[int, list[int]] = {}
+
+    for lot in ctx.lots:
+        autorises = [
+            int(v.rang) for v in ctx.vehicules
+            if couvre(v.type_caisson, lot.caisson_requis)
+        ]
+
+        if not autorises:
+            raise ValueError(
+                f"Lot {lot.id_lot} ({lot.caisson_requis}) : aucun vehicule "
+                f"compatible dans la flotte active."
+            )
+
+        idx = manager.NodeToIndex(lot.index)
+        routing.VehicleVar(idx).SetValues(autorises + [-1])
+        restrictions[lot.id_lot] = autorises
+
+    return restrictions
 
 
 def _extraire(ctx, manager, routing, solution) -> Resultat:
