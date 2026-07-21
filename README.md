@@ -78,3 +78,33 @@ D18 | S4 J5 | Endpoint agrégé GET /runs/{id_run} (tournées + affectations
 imbriquées) reporté en S6. Le filtrage plat /affectations?id_run= est
 implémenté en S4 J5 et suffit à la S5. Forme exacte de l'agrégat à définir
 avec les besoins réels de l'écran 4.
+
+D19 | S4 J5 | Retour au depot le plus proche modelise par un noeud d'arrivee
+virtuel par vehicule. La matrice passe de 105x105 a (105+V)x(105+V). Le cout
+i -> E_v vaut min sur les 5 depots de distance(i, depot_k), lue sur la
+matrice routiere asymetrique. Le depot de retour effectif est reconstruit
+apres resolution par argmin et ecrit dans tournee.id_station_retour.
+Alternative ecartee : retour impose au depot de depart (contredit S2).
+
+D20 | S4 J5 | Fractionnement des lots differe. Le solveur du J1 traite un
+CVRP multi-depots classique : un lot = un noeud = un vehicule. Le
+pre-decoupage en noeuds jumeaux (Q_min = 25 %) sera introduit au J3
+uniquement si les taux de remplissage revelent une tension sur la capacite.
+Le fractionnement dynamique (SDVRP, formulation CP-SAT) est ecarte du
+perimetre du stage et signale comme perspective dans le rapport.
+
+D21 | S4 J5 | Taille de flotte parametrable (n_vehicules, defaut 10 conforme
+au cahier des charges). Q1 restant ouverte (11 mobilisables contre 10
+annonces), les deux valeurs seront comparees et l'ecart traite comme un
+resultat d'analyse et non comme une hypothese figee.
+
+D22 | S4 J5 | Fonction objectif = distance totale + penalite de non-livraison
+(AddDisjunction, cout eleve par lot). Garantit une solution exploitable meme
+en capacite insuffisante, et identifie les lots abandonnes. Alternative
+ecartee : livraison obligatoire, qui ne renvoie aucune solution en cas
+d'infaisabilite.
+
+D23 — Flotte mobilisable par le solveur. Un véhicule entre dans la flotte si assurance = 1 ET id_chauffeur IS NOT NULL ET chauffeur.statut = 'actif'. Le champ vehicule.statut n'est pas discriminant (les 12 sont à actif). Le véhicule 11 reste exclu : non assuré. Flotte retenue : 11 véhicules, capacités standard 114 / réfrigéré 34 / sécurisé 14.
+D24 — Réactivation du chauffeur 12. Chauffeur 12 (Tarek F., station 3) repassé de conge à actif et apparié au véhicule 12 (réfrigéré, capacité 18, station 3). Motif : la capacité réfrigérée mobilisable (16) était inférieure au volume des lots réfrigérés (16,2), rendant le problème infaisable. Modification du jeu de test, non du modèle — à confirmer par M. Zghili, qui peut préférer assumer le déficit.
+D25 — Doublon Jebeniana. Le remplacement de Kerkennah (S4 J3) a introduit une seconde destination nommée Jebeniana, à ~400 m de l'existante. Renommage en Jebeniana Est (id 71) et Jebeniana Centre (id 72) plutôt que fusion, pour préserver l'indexation canonique et éviter la régénération des matrices. Les deux restent des points de livraison distincts. Note : le plancher D13 (3 km) s'applique à cette paire, dont la distance réelle est de ~0,4 km.
+D26 — Mise à l'échelle des volumes. OR-Tools n'accepte que des entiers dans une dimension de capacité. Volumes (0,11 à 1,58) et capacités convertis en centièmes (×100) à l'entrée du solveur, conversion inverse à l'écriture des résultats.

@@ -80,8 +80,8 @@ INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) 
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (68, 'Chihia', 'Sfax', 34.745, 10.7);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (69, 'Thyna', 'Sfax', 34.667, 10.703);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (70, 'Mahares', 'Sfax', 34.53, 10.5);
-INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (71, 'Jebeniana', 'Sfax', 35.035133, 10.909054);
-INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (72, 'Jebeniana', 'Sfax', 35.035, 10.905);
+INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (71, 'Jebeniana Est', 'Sfax', 35.035133, 10.909054);
+INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (72, 'Jebeniana Centre', 'Sfax', 35.035, 10.905);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (73, 'El Hencha', 'Sfax', 35.122888, 10.741542);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (74, 'Kairouan Ville', 'Kairouan', 35.678, 10.096);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (75, 'Sbikha', 'Kairouan', 35.933, 10.0);
