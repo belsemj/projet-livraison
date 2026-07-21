@@ -18,7 +18,7 @@ print(f"contexte : {ctx.nb_noeuds} noeuds, {ctx.nb_vehicules} vehicules")
 print("resolution en cours...\n")
 
 t0 = time.perf_counter()
-res = resoudre(ctx, limite_secondes=10)
+res = resoudre(ctx)
 duree = time.perf_counter() - t0
 
 print(resume(res, ctx))

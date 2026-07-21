@@ -1,11 +1,11 @@
 """
-Solveur MDVRP (OR-Tools) -- S5 J2.
+Solveur MDVRP (OR-Tools) -- S5 J2, calibre au J3.
 
 Consomme le ContexteSolveur produit par matrice_etendue.construire_contexte()
 et renvoie une solution exploitable : une tournee par vehicule, plus la liste
 des lots non servis.
 
-Perimetre du J2 : distance + capacite + disjonctions penalisees + caissons.
+Perimetre : distance + capacite + disjonctions penalisees + caissons.
 
 Disjonctions (D28) : chaque noeud de livraison est optionnel, moyennant une
 penalite. Sans cela, la moindre insuffisance de capacite fait echouer la
@@ -16,20 +16,57 @@ d'exploitation.
 Caissons (hypothese B) : chaque lot est restreint aux vehicules dont le
 caisson couvre son exigence. La contrainte est debrayable (caissons=False)
 afin de mesurer son surcout a budget de temps egal.
+
+Calibration (J3) : limite de temps, penalite d'abandon et strategie de
+recherche sont tous des parametres de resoudre(). Les valeurs par defaut
+ci-dessous sont les valeurs de production, etablies par
+scripts/calibrer.py ; les mesures correspondantes sont dans resultats/.
+
+Reserve de mesure : la recherche est pilotee par le temps mural, le nombre
+d'iterations varie donc legerement d'une execution a l'autre. En pratique
+les resultats se regroupent sur quelques optima locaux et l'ecart observe
+reste de l'ordre de 1 %, sans effet sur les arbitrages du J3.
 """
 
 from dataclasses import dataclass, field
 
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
+from app.services.distances import NB_STATIONS
 from app.services.matrice_etendue import ContexteSolveur, ECHELLE
 
 # Penalite d'abandon d'un lot, en metres. Doit depasser largement le plus
 # long detour envisageable (max de la matrice ~755 km) pour que l'abandon
 # reste un dernier recours et jamais une optimisation de confort.
+#
+# Validee au J3 : a flotte complete, 5 000 000 et 500 000 m servent les
+# 120 lots ; 50 000 m en abandonne 39 et 5 000 m en abandonne 118. La
+# bascule se situe donc entre 500 et 50 km, coherente avec un cout
+# marginal moyen d'environ 25 km par lot. 500 000 m suffirait sur ce jeu
+# de donnees mais reste SOUS le plus long trajet de la matrice : elle
+# passerait par chance, pas par construction. 5 000 000 conserve un
+# facteur 6,6 de marge.
 PENALITE_ABANDON_M = 5_000_000
 
-LIMITE_SECONDES = 10
+# 60 s. Le plateau reel est a 120 s (-5,1 % entre 60 et 120 sur le probleme
+# contraint, puis -0,1 % entre 120 et 300), mais l'endpoint
+# POST /optimisations du J5 est synchrone et 120 s depasse les delais
+# d'expiration usuels des passerelles HTTP. On concede ces 5 % a la
+# robustesse du service. Un passage en traitement asynchrone leverait la
+# contrainte.
+LIMITE_SECONDES = 60
+
+# Strategie de recherche. Noms des enums OR-Tools, resolus par getattr dans
+# resoudre() : passer des chaines plutot que des constantes permet de
+# piloter la campagne de calibration depuis la ligne de commande.
+#
+# Retenus au J3 apres comparaison de 12 couples a 60 s sur le probleme
+# contraint : 4035,1 km contre 4319,5 pour PATH_CHEAPEST_ARC +
+# GUIDED_LOCAL_SEARCH (couple par defaut d'OR-Tools), soit 6,6 % de gain a
+# budget egal. TABU_SEARCH domine SIMULATED_ANNEALING dans les quatre
+# familles de solution initiale testees, sans exception.
+PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
+METAHEURISTIQUE = "TABU_SEARCH"
 
 # ---------------------------------------------------------------------------
 # Compatibilite caisson (hypothese B, decision D-serie)
@@ -81,6 +118,8 @@ def resoudre(ctx: ContexteSolveur,
              limite_secondes: int = LIMITE_SECONDES,
              penalite: int = PENALITE_ABANDON_M,
              caissons: bool = True,
+             premiere_solution: str = PREMIERE_SOLUTION,
+             metaheuristique: str = METAHEURISTIQUE,
              journal: bool = False) -> Resultat:
 
     manager = pywrapcp.RoutingIndexManager(
@@ -115,7 +154,7 @@ def resoudre(ctx: ContexteSolveur,
     # --- contraintes de caisson (hypothese B) -----------------------------
     # Debrayable pour mesurer le surcout de la contrainte a budget egal.
     if caissons:
-        restrictions = _restreindre_par_caisson(ctx, manager, routing)
+        _restreindre_par_caisson(ctx, manager, routing)
 
     # --- disjonctions : un lot peut rester non servi (D28) ----------------
     for lot in ctx.lots:
@@ -123,11 +162,11 @@ def resoudre(ctx: ContexteSolveur,
 
     # --- parametres de recherche -----------------------------------------
     params = pywrapcp.DefaultRoutingSearchParameters()
-    params.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    params.first_solution_strategy = getattr(
+        routing_enums_pb2.FirstSolutionStrategy, premiere_solution
     )
-    params.local_search_metaheuristic = (
-        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+    params.local_search_metaheuristic = getattr(
+        routing_enums_pb2.LocalSearchMetaheuristic, metaheuristique
     )
     params.time_limit.FromSeconds(limite_secondes)
     params.log_search = journal
@@ -157,6 +196,9 @@ def _restreindre_par_caisson(ctx: ContexteSolveur, manager, routing) -> dict[int
     sans diagnostic des la premiere infaisabilite.
 
     Doit etre appele avant SolveWithParameters ; apres, sans effet.
+
+    Le dictionnaire renvoye n'est pas consomme par resoudre() ; il sert au
+    diagnostic et aux tests (quels vehicules restent ouverts a quel lot).
     """
     restrictions: dict[int, list[int]] = {}
 
@@ -188,7 +230,6 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
 
     # matrice de base pour deduire le depot de retour reel
     matrice = ctx.matrice
-    nb_stations = len(set(ctx.starts)) if ctx.starts else 0
 
     for v in ctx.vehicules:
         index = routing.Start(v.rang)
@@ -209,10 +250,14 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
             distance += routing.GetArcCostForVehicle(index, suivant, v.rang)
             index = suivant
 
-        # depot de retour : le plus proche du dernier point livre
+        # depot de retour : le plus proche du dernier point livre.
+        # NB_STATIONS et non le nombre de depots effectivement utilises par
+        # la flotte : les cinq stations restent des retours possibles, meme
+        # si aucun vehicule n'en part.
         retour = None
         if lots_tournee:
-            candidats = [(int(matrice[dernier_noeud, s]), s) for s in range(5)]
+            candidats = [(int(matrice[dernier_noeud, s]), s)
+                         for s in range(NB_STATIONS)]
             retour = min(candidats)[1] + 1     # index -> id_station
 
         total += distance
