@@ -123,7 +123,7 @@ INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (8, 'Bilel 
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (9, 'Hamza S.', 'actif', 4);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (10, 'Anis Z.', 'actif', 5);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (11, 'Slim D.', 'conge', 1);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (12, 'Tarek F.', 'conge', 3);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (12, 'Tarek F.', 'actif', 3);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (13, 'Riadh N.', 'maladie', 4);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (14, 'Maher O.', 'maladie', 2);
 
@@ -139,4 +139,4 @@ INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (9, 14.0, 1, 'actif', 'standard', 4, 9);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (10, 14.0, 1, 'actif', 'standard', 5, 10);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (11, 12.0, 0, 'actif', 'standard', 1, NULL);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (12, 18.0, 1, 'reserve', 'refrigere', 3, NULL);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (12, 18.0, 1, 'actif', 'refrigere', 3, 12);
