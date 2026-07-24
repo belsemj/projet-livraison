@@ -1,6 +1,11 @@
 -- Jeu de donnees initial (schema fige S2) : 5 stations sources, 100 destinations,
 -- 14 chauffeurs, 12 vehicules. IDs entiers. Binome chauffeur<->vehicule (D12).
 -- Ordre d'insertion : station -> destination -> chauffeur -> vehicule (respect des FK).
+--
+-- Etat S5 J4 : integre D15 (caissons specialises) et D33 (repartition de la
+-- flotte sur les 5 depots + vehicule securise unique au depot 1). Les chauffeurs
+-- mobilises suivent leur vehicule ; les chauffeurs non mobilisables (11, 13, 14)
+-- gardent leur station d'origine, sans effet operationnel.
 
 -- ===== STATIONS (5 sources) =====
 INSERT INTO station (id_station, nom, gouvernorat, latitude, longitude) VALUES (1, 'Depot El Ghazala', 'Ariana', 36.893, 10.19);
@@ -111,32 +116,36 @@ INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) 
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (99, 'Kebili Ville', 'Kebili', 33.704, 8.969);
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (100, 'Douz', 'Kebili', 33.466, 9.02);
 
--- ===== CHAUFFEURS (14 : 10 actifs, 2 conge, 2 maladie) =====
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (1, 'Ahmed B.', 'actif', 1);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (2, 'Mohamed T.', 'actif', 2);
+-- ===== CHAUFFEURS (14 : 11 actifs, 1 conge, 2 maladie) =====
+-- Chauffeurs mobilises alignes sur le depot de leur vehicule (D33).
+-- Chauffeurs 11 (conge), 13, 14 (maladie) non mobilisables : station d'origine.
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (1, 'Ahmed B.', 'actif', 4);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (2, 'Mohamed T.', 'actif', 3);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (3, 'Sami K.', 'actif', 3);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (4, 'Youssef G.', 'actif', 4);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (4, 'Youssef G.', 'actif', 5);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (5, 'Karim H.', 'actif', 5);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (6, 'Nizar L.', 'actif', 1);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (7, 'Walid M.', 'actif', 2);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (8, 'Bilel R.', 'actif', 3);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (9, 'Hamza S.', 'actif', 4);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (10, 'Anis Z.', 'actif', 5);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (8, 'Bilel R.', 'actif', 2);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (9, 'Hamza S.', 'actif', 1);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (10, 'Anis Z.', 'actif', 4);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (11, 'Slim D.', 'conge', 1);
-INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (12, 'Tarek F.', 'actif', 3);
+INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (12, 'Tarek F.', 'actif', 1);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (13, 'Riadh N.', 'maladie', 4);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (14, 'Maher O.', 'maladie', 2);
 
 -- ===== VEHICULES (12) + binome chauffeur attitre (NULL si non mobilisable) =====
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (1, 12.0, 1, 'actif', 'standard', 1, 1);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (2, 12.0, 1, 'actif', 'standard', 2, 2);
+-- Repartition D32 (S5 J4) : 1 standard + 1 refrigere par depot, 1 securise
+-- unique au depot 1. Integre egalement D15 (S4 J2), restee non propagee ici.
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (1, 12.0, 1, 'actif', 'refrigere', 4, 1);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (2, 12.0, 1, 'actif', 'refrigere', 3, 2);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (3, 16.0, 1, 'actif', 'standard', 3, 3);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (4, 16.0, 1, 'actif', 'standard', 4, 4);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (4, 16.0, 1, 'actif', 'refrigere', 5, 4);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (5, 20.0, 1, 'actif', 'standard', 5, 5);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (6, 20.0, 1, 'actif', 'standard', 1, 6);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (7, 10.0, 1, 'actif', 'standard', 2, 7);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (8, 10.0, 1, 'actif', 'standard', 3, 8);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (9, 14.0, 1, 'actif', 'standard', 4, 9);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (10, 14.0, 1, 'actif', 'standard', 5, 10);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (8, 10.0, 1, 'actif', 'refrigere', 2, 8);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (9, 14.0, 1, 'actif', 'securise', 1, 9);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (10, 14.0, 1, 'actif', 'standard', 4, 10);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (11, 12.0, 0, 'actif', 'standard', 1, NULL);
-INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (12, 18.0, 1, 'actif', 'refrigere', 3, 12);
+INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (12, 18.0, 1, 'actif', 'refrigere', 1, 12);

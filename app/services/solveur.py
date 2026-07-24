@@ -1,11 +1,11 @@
 """
-Solveur MDVRP (OR-Tools) -- S5 J2, calibre au J3.
+Solveur MDVRP (OR-Tools) -- S5 J2, calibre au J3, decoupe au J4.
 
 Consomme le ContexteSolveur produit par matrice_etendue.construire_contexte()
 et renvoie une solution exploitable : une tournee par vehicule, plus la liste
 des lots non servis.
 
-Perimetre : distance + capacite + disjonctions penalisees + caissons.
+Perimetre : distance + capacite + disjonctions penalisees + caissons + source.
 
 Disjonctions (D28) : chaque noeud de livraison est optionnel, moyennant une
 penalite. Sans cela, la moindre insuffisance de capacite fait echouer la
@@ -17,27 +17,27 @@ Caissons (hypothese B) : chaque lot est restreint aux vehicules dont le
 caisson couvre son exigence. La contrainte est debrayable (caissons=False)
 afin de mesurer son surcout a budget de temps egal.
 
+Station source (D33, S5 J4) : chaque lot n'est servable que par les vehicules
+bases a son depot d'appartenance (lot.id_station_source). Fusionnee avec la
+contrainte caisson dans le meme domaine de VehicleVar : le domaine autorise
+est l'INTERSECTION des deux conditions. Cette contrainte decoupe de facto le
+probleme en cinq sous-problemes independants -- aucune tournee ne franchit la
+frontiere entre deux depots -- sans qu'il faille cinq resolutions distinctes.
+Debrayable (source=False) pour retrouver le modele calibre au J3 et mesurer
+le surcout du decoupage.
+
 Cout fixe par vehicule (D31) : mecanisme conserve comme parametre mais
 NEUTRALISE par defaut, la campagne de calibration ayant montre qu'il
-degrade la recherche au lieu de l'orienter (detail au niveau de la
-constante). Le pilotage du nombre de vehicules passe par un plafond de
-flotte, qui est une contrainte et non une penalite.
+degrade la recherche au lieu de l'orienter. Le pilotage du nombre de
+vehicules passe par un plafond de flotte, qui est une contrainte et non
+une penalite.
 
 Calibration (J3) : limite de temps, penalite d'abandon, cout fixe et
 strategie de recherche sont tous des parametres de resoudre(). Les valeurs
 par defaut ci-dessous sont les valeurs de production, etablies par
 scripts/calibrer.py ; les mesures correspondantes sont dans resultats/.
-
-Reserve de mesure : la recherche est pilotee par le temps mural, le nombre
-d'iterations varie donc legerement d'une execution a l'autre. En pratique
-les resultats se regroupent sur quelques optima locaux et l'ecart observe
-reste de l'ordre de 1 %, sans effet sur les arbitrages du J3.
-
-Perimetre du modele calibre : les vehicules peuvent servir n'importe quel
-lot, sous reserve de capacite et de caisson. La contrainte de station
-source (un lot n'est pris que par les vehicules de son depot) est prevue
-au J4 et decoupera le probleme en cinq sous-problemes independants ; les
-mesures du J3 decrivent le modele anterieur a ce decoupage.
+A REMESURER au J4 : le decoupage par source rend chaque sous-probleme plus
+facile, la limite de 60 s est probablement trop genereuse.
 """
 
 from dataclasses import dataclass, field
@@ -71,39 +71,22 @@ PENALITE_ABANDON_M = 5_000_000
 # testes, l'ecart croissant avec la valeur.
 #
 # Remplace par un plafond de flotte (campagne "flotte"), qui est une
-# contrainte et non une penalite. Cause du decrochage a investiguer
-# en S6 : piste GLS, dont la calibration interne depend de l'ordre de
-# grandeur de l'objectif.
+# contrainte et non une penalite.
 COUT_FIXE_VEHICULE_M = 0
 
-# 60 s. Le plateau reel est a 120 s (-5,1 % entre 60 et 120 sur le probleme
-# contraint, puis -0,1 % entre 120 et 300), mais l'endpoint
-# POST /optimisations du J5 est synchrone et 120 s depasse les delais
-# d'expiration usuels des passerelles HTTP. On concede ces 5 % a la
-# robustesse du service. Un passage en traitement asynchrone leverait la
-# contrainte.
+# 60 s. Le plateau reel est a 120 s, mais l'endpoint POST /optimisations
+# du J5 est synchrone et 120 s depasse les delais d'expiration usuels des
+# passerelles HTTP. On concede ces 5 % a la robustesse du service.
 #
 # A REMESURER au J4 : la contrainte de station source decoupe le probleme
-# en cinq sous-problemes independants, nettement plus faciles. 60 s sera
-# probablement trop genereux.
+# en cinq sous-problemes independants, nettement plus faciles.
 LIMITE_SECONDES = 60
 
-# Strategie de recherche. Noms des enums OR-Tools, resolus par getattr dans
-# resoudre() : passer des chaines plutot que des constantes permet de
-# piloter la campagne de calibration depuis la ligne de commande.
-#
-# Retenus au J3 : 4758,9 km, meilleur des 12 couples a 60 s sur le
-# probleme contraint. GUIDED_LOCAL_SEARCH domine TABU_SEARCH dans trois
-# familles sur quatre. SIMULATED_ANNEALING est dernier partout, dans les
-# deux campagnes menees, sans exception.
 PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
 METAHEURISTIQUE = "GUIDED_LOCAL_SEARCH"
 
 # ---------------------------------------------------------------------------
 # Compatibilite caisson (hypothese B, decision D-serie)
-#
-# Cle   : type de caisson equipant le vehicule
-# Valeur: types de lots que ce vehicule peut transporter
 #
 # Un caisson specialise sert aussi le standard (il est plus contraignant
 # que necessaire, jamais moins). Deux specialises ne se servent pas
@@ -149,6 +132,7 @@ def resoudre(ctx: ContexteSolveur,
              limite_secondes: int = LIMITE_SECONDES,
              penalite: int = PENALITE_ABANDON_M,
              caissons: bool = True,
+             source: bool = True,
              cout_fixe: int = COUT_FIXE_VEHICULE_M,
              premiere_solution: str = PREMIERE_SOLUTION,
              metaheuristique: str = METAHEURISTIQUE,
@@ -169,11 +153,6 @@ def resoudre(ctx: ContexteSolveur,
     routing.SetArcCostEvaluatorOfAllVehicles(idx_cout)
 
     # --- cout fixe d'ouverture d'un vehicule (D31, desactive par defaut) ---
-    # Applique aux seuls vehicules effectivement utilises : une tournee
-    # vide ne coute rien. Entre dans l'objectif, PAS dans les distances
-    # remontees par GetArcCostForVehicle -- distance_totale_m reste donc
-    # une distance reelle. Conserve pour la reproductibilite de la
-    # campagne cout_fixe ; a zero, l'appel est saute.
     if cout_fixe:
         routing.SetFixedCostOfAllVehicles(cout_fixe)
 
@@ -192,10 +171,14 @@ def resoudre(ctx: ContexteSolveur,
         "Capacite",
     )
 
-    # --- contraintes de caisson (hypothese B) -----------------------------
-    # Debrayable pour mesurer le surcout de la contrainte a budget egal.
-    if caissons:
-        _restreindre_par_caisson(ctx, manager, routing)
+    # --- restriction des vehicules autorises par lot ----------------------
+    # Caisson (hypothese B) et station source (D33) s'expriment tous deux
+    # comme une restriction du domaine de VehicleVar. On les combine dans un
+    # seul passage : le domaine autorise est l'intersection des conditions
+    # actives. Chacune est debrayable pour la mesure.
+    if caissons or source:
+        _restreindre_vehicules(ctx, manager, routing,
+                               caissons=caissons, source=source)
 
     # --- disjonctions : un lot peut rester non servi (D28) ----------------
     for lot in ctx.lots:
@@ -219,9 +202,16 @@ def resoudre(ctx: ContexteSolveur,
     return _extraire(ctx, manager, routing, solution)
 
 
-def _restreindre_par_caisson(ctx: ContexteSolveur, manager, routing) -> dict[int, list[int]]:
+def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
+                           caissons: bool = True,
+                           source: bool = True) -> dict[int, list[int]]:
     """
-    Limite chaque lot aux vehicules dont le caisson couvre son exigence.
+    Limite chaque lot aux vehicules autorises par les contraintes actives.
+
+    Un vehicule est autorise pour un lot si TOUTES les conditions activees
+    sont satisfaites :
+      - caisson : couvre(v.type_caisson, lot.caisson_requis)
+      - source  : v.id_station == lot.id_station_source
 
     Le rang du vehicule (v.rang) est l'identifiant attendu par OR-Tools :
     c'est la position dans les tableaux starts/ends passes au manager, pas
@@ -233,35 +223,37 @@ def _restreindre_par_caisson(ctx: ContexteSolveur, manager, routing) -> dict[int
     que soit la forme de la sequence Python passee).
     La valeur -1 doit figurer dans le domaine : c'est celle que prend la
     variable quand le noeud n'est visite par aucun vehicule. L'omettre
-    rendrait la disjonction inoperante et ferait echouer la resolution
-    sans diagnostic des la premiere infaisabilite.
+    rendrait la disjonction inoperante et ferait echouer la resolution sans
+    diagnostic des la premiere infaisabilite.
 
     Doit etre appele avant SolveWithParameters ; apres, sans effet.
 
     Le dictionnaire renvoye n'est pas consomme par resoudre() ; il sert au
     diagnostic et aux tests (quels vehicules restent ouverts a quel lot).
 
-    ValueError sur lot sans vehicule compatible : cas theorique tant que
-    la source n'est pas contrainte. Au J4 il deviendra courant (un lot
-    refrigere partant d'un depot sans vehicule refrigere) et devra etre
-    detecte par controler() AVANT resolution, une exception dans un
-    endpoint web n'etant pas un diagnostic exploitable.
+    Lot sans vehicule autorise : le noeud est contraint a -1 (jamais visite),
+    donc abandonne par disjonction. Depuis le decoupage par source (J4) ce
+    cas est courant -- un lot refrigere partant d'un depot sans vehicule
+    refrigere. On NE leve PLUS d'exception : controler() a deja signale ces
+    lots en amont ('[info]'), et un abandon propre vaut mieux qu'une
+    ValueError en pleine resolution dans un contexte web. Le domaine devient
+    simplement [-1].
     """
     restrictions: dict[int, list[int]] = {}
 
     for lot in ctx.lots:
-        autorises = [
-            int(v.rang) for v in ctx.vehicules
-            if couvre(v.type_caisson, lot.caisson_requis)
-        ]
-
-        if not autorises:
-            raise ValueError(
-                f"Lot {lot.id_lot} ({lot.caisson_requis}) : aucun vehicule "
-                f"compatible dans la flotte active."
-            )
+        autorises = []
+        for v in ctx.vehicules:
+            if caissons and not couvre(v.type_caisson, lot.caisson_requis):
+                continue
+            if source and lot.id_station_source is not None \
+                    and v.id_station != lot.id_station_source:
+                continue
+            autorises.append(int(v.rang))
 
         idx = manager.NodeToIndex(lot.index)
+        # -1 toujours present : autorise l'abandon. Si autorises est vide, le
+        # domaine est [-1] et le lot est necessairement non servi.
         routing.VehicleVar(idx).SetValues(autorises + [-1])
         restrictions[lot.id_lot] = autorises
 
@@ -275,7 +267,6 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
     tournees: list[TourneeResultat] = []
     total = 0
 
-    # matrice de base pour deduire le depot de retour reel
     matrice = ctx.matrice
 
     for v in ctx.vehicules:
@@ -298,9 +289,6 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
             index = suivant
 
         # depot de retour : le plus proche du dernier point livre.
-        # NB_STATIONS et non le nombre de depots effectivement utilises par
-        # la flotte : les cinq stations restent des retours possibles, meme
-        # si aucun vehicule n'en part.
         retour = None
         if lots_tournee:
             candidats = [(int(matrice[dernier_noeud, s]), s)

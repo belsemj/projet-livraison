@@ -118,3 +118,17 @@ D30 | S5 J2 | Surcout de l'hypothese B mesure a budget de temps egal (60 s) :
 3 130,0 km sans contrainte contre 4 321,6 km avec, soit +38,1 %, a service
 identique (120/120 lots livres). La contrainte est rendue debrayable
 (parametre caissons) pour que la mesure reste reproductible.
+
+D31 | S5 J4 | Deux identifiants distincts : id_vague sur lot (ensemble de
+commandes a traiter, fige avant calcul) et id_run sur tournee (identifiant
+d'une execution du solveur). Une vague peut donner lieu a plusieurs runs.
+Alternative ecartee : id_run unique sur les deux tables, qui aurait confondu
+l'entree et la sortie du solveur.
+
+D32 | S5 J4 | Reorganisation de la flotte : un vehicule standard et un
+refrigere par depot (10), plus un unique vehicule securise. Le securise est
+place au depot 1, contraint par la capacite : le depot 1 concentre 40,13 m3
+et deux vehicules plafonnent a 40,00. Les lots securises sont consolides au
+depot 1 par regle de donnees, faute de quoi le solveur devrait modeliser des
+noeuds de ramassage. Modification de donnees de reference, de meme nature que
+D15 : artefact de jeu de test, a valider par M. Zghili.

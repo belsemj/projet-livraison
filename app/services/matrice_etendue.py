@@ -25,6 +25,12 @@ Le depot de retour reel se deduit apres resolution (id_station_retour, J4).
 
 D26 : OR-Tools n'admet que des entiers dans une dimension de capacite.
 Distances en metres entiers, volumes et capacites en centiemes.
+
+S5 J4 : LotSolveur porte desormais id_station_source (contrainte de station
+source, D33). controler() teste la faisabilite caisson DEPOT PAR DEPOT et non
+plus seulement en agrege : la contrainte de source ayant decoupe le probleme
+en cinq sous-problemes, une capacite globale suffisante ne garantit plus la
+faisabilite locale.
 """
 
 from dataclasses import dataclass
@@ -45,6 +51,15 @@ from app.services.distances import (
 # Facteur de mise a l'echelle des volumes et capacites (D26).
 ECHELLE = 100
 
+# Compatibilite caisson (hypothese B). Dupliquee depuis solveur.CAISSONS_COUVERTS
+# a dessein : l'importer creerait un import circulaire, solveur important deja
+# ce module. Source de verite : solveur.couvre.
+_CAISSONS_COUVERTS: dict[str, set[str]] = {
+    "standard": {"standard"},
+    "refrigere": {"standard", "refrigere"},
+    "securise": {"standard", "securise"},
+}
+
 
 @dataclass(frozen=True)
 class LotSolveur:
@@ -56,6 +71,7 @@ class LotSolveur:
     volume_echelle: int
     priorite: str
     fragile: bool
+    id_station_source: int | None   # depot d'appartenance (D33) ; None = non renseigne
 
 
 @dataclass(frozen=True)
@@ -144,6 +160,7 @@ def construire_contexte(db) -> ContexteSolveur:
                 volume_echelle=int(round(float(l.volume) * ECHELLE)),
                 priorite=l.priorite,
                 fragile=bool(l.fragile),
+                id_station_source=l.id_station_source,
             )
         )
 
@@ -199,7 +216,14 @@ def construire_contexte(db) -> ContexteSolveur:
 
 
 def controler(ctx: ContexteSolveur) -> list[str]:
-    """Anomalies bloquantes ou suspectes. Liste vide = contexte sain."""
+    """
+    Anomalies bloquantes ou suspectes. Liste vide = contexte sain.
+
+    Les lignes prefixees '[info]' ne sont PAS bloquantes : elles signalent
+    des lots que le solveur abandonnera proprement par disjonction (D28),
+    resultat d'exploitation et non erreur de donnees. Les autres lignes sont
+    des anomalies franches.
+    """
     a: list[str] = []
     n = ctx.nb_noeuds
 
@@ -229,26 +253,50 @@ def controler(ctx: ContexteSolveur) -> list[str]:
                         f"lots {groupe[i].id_lot} et {groupe[j].id_lot}"
                     )
 
-    # faisabilite par type de caisson (hypothese B : un caisson specialise
-    # sert aussi le standard, jamais l'autre specialise)
-    couverts = {
-        "standard": {"standard"},
-        "refrigere": {"standard", "refrigere"},
-        "securise": {"standard", "securise"},
-    }
-    for besoin in {l.caisson_requis for l in ctx.lots}:
-        charge = sum(l.volume_echelle for l in ctx.lots if l.caisson_requis == besoin)
-        capa = sum(
-            v.capacite_echelle
-            for v in ctx.vehicules
-            if besoin in couverts.get(v.type_caisson, set())
+    # --- faisabilite caisson, DEPOT PAR DEPOT (S5 J4) ---------------------
+    # Remplace l'ancien test agrege. La contrainte de source ayant decoupe le
+    # probleme, une capacite globale suffisante ne garantit plus rien : un lot
+    # refrigere au depot 2 ne peut etre servi que par un vehicule refrigere DU
+    # DEPOT 2.
+    #   - capacite locale insuffisante  -> anomalie bloquante
+    #   - aucun porteur du tout au depot -> [info] : abandon par disjonction
+    depots = sorted({
+        l.id_station_source for l in ctx.lots if l.id_station_source is not None
+    })
+    non_renseignes = [l.id_lot for l in ctx.lots if l.id_station_source is None]
+    if non_renseignes:
+        apercu = ", ".join(str(i) for i in non_renseignes[:10])
+        suite = " ..." if len(non_renseignes) > 10 else ""
+        a.append(
+            f"{len(non_renseignes)} lot(s) sans station source : {apercu}{suite} "
+            f"— peupler id_station_source avant optimisation"
         )
-        if charge > capa:
-            a.append(
-                f"caisson '{besoin}' infaisable : charge {charge/ECHELLE:.2f} "
-                f"> capacite {capa/ECHELLE:.2f}"
-            )
 
+    for depot in depots:
+        lots_depot = [l for l in ctx.lots if l.id_station_source == depot]
+        for besoin in {l.caisson_requis for l in lots_depot}:
+            charge = sum(
+                l.volume_echelle for l in lots_depot if l.caisson_requis == besoin
+            )
+            capa = sum(
+                v.capacite_echelle
+                for v in ctx.vehicules
+                if v.id_station == depot
+                and besoin in _CAISSONS_COUVERTS.get(v.type_caisson, set())
+            )
+            nb = sum(1 for l in lots_depot if l.caisson_requis == besoin)
+            if capa == 0:
+                a.append(
+                    f"[info] depot {depot}, caisson '{besoin}' : aucun porteur "
+                    f"({nb} lot(s), {charge/ECHELLE:.2f} m3) — abandon par disjonction"
+                )
+            elif charge > capa:
+                a.append(
+                    f"depot {depot}, caisson '{besoin}' infaisable : charge "
+                    f"{charge/ECHELLE:.2f} > capacite locale {capa/ECHELLE:.2f}"
+                )
+
+    # garde-fou global conserve
     if sum(ctx.demandes) > sum(ctx.capacites):
         a.append("charge totale superieure a la capacite totale")
 

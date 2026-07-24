@@ -15,6 +15,19 @@ class Lot(Base):
         Integer, ForeignKey("destination.id_destination"), nullable=False
     )
 
+    # --- S5 J4 : contrainte de station source (D32, D33) ---
+    # Depot ou la marchandise est physiquement stockee. Donnee d'ENTREE,
+    # pas un resultat de calcul : precede l'optimisation, au meme titre que
+    # id_destination. Nullable en dev (SQLite ne fait pas ALTER COLUMN
+    # aisement) ; passera NOT NULL a la migration PostgreSQL de prod.
+    id_station_source = Column(
+        Integer, ForeignKey("station.id_station"), nullable=True
+    )
+    # Ensemble de commandes a traiter ensemble (une vague). Fige avant tout
+    # calcul. A ne pas confondre avec id_run (sur tournee), qui identifie une
+    # EXECUTION du solveur : une vague peut donner lieu a plusieurs runs.
+    id_vague = Column(String(30), nullable=False, default="vague_0")
+
     __table_args__ = (
         CheckConstraint("volume > 0", name="chk_lot_vol"),
         CheckConstraint(
@@ -27,4 +40,5 @@ class Lot(Base):
     )
 
     destination = relationship("Destination", back_populates="lots")
+    station_source = relationship("Station")
     affectations = relationship("Affectation", back_populates="lot")
