@@ -17,15 +17,27 @@ Caissons (hypothese B) : chaque lot est restreint aux vehicules dont le
 caisson couvre son exigence. La contrainte est debrayable (caissons=False)
 afin de mesurer son surcout a budget de temps egal.
 
-Calibration (J3) : limite de temps, penalite d'abandon et strategie de
-recherche sont tous des parametres de resoudre(). Les valeurs par defaut
-ci-dessous sont les valeurs de production, etablies par
+Cout fixe par vehicule (D31) : mecanisme conserve comme parametre mais
+NEUTRALISE par defaut, la campagne de calibration ayant montre qu'il
+degrade la recherche au lieu de l'orienter (detail au niveau de la
+constante). Le pilotage du nombre de vehicules passe par un plafond de
+flotte, qui est une contrainte et non une penalite.
+
+Calibration (J3) : limite de temps, penalite d'abandon, cout fixe et
+strategie de recherche sont tous des parametres de resoudre(). Les valeurs
+par defaut ci-dessous sont les valeurs de production, etablies par
 scripts/calibrer.py ; les mesures correspondantes sont dans resultats/.
 
 Reserve de mesure : la recherche est pilotee par le temps mural, le nombre
 d'iterations varie donc legerement d'une execution a l'autre. En pratique
 les resultats se regroupent sur quelques optima locaux et l'ecart observe
 reste de l'ordre de 1 %, sans effet sur les arbitrages du J3.
+
+Perimetre du modele calibre : les vehicules peuvent servir n'importe quel
+lot, sous reserve de capacite et de caisson. La contrainte de station
+source (un lot n'est pris que par les vehicules de son depot) est prevue
+au J4 et decoupera le probleme en cinq sous-problemes independants ; les
+mesures du J3 decrivent le modele anterieur a ce decoupage.
 """
 
 from dataclasses import dataclass, field
@@ -48,25 +60,44 @@ from app.services.matrice_etendue import ContexteSolveur, ECHELLE
 # facteur 6,6 de marge.
 PENALITE_ABANDON_M = 5_000_000
 
+# Cout fixe d'une sortie de vehicule, en metres (D31) -- DESACTIVE.
+#
+# Mecanisme conserve comme parametre mais neutralise par defaut. La
+# campagne cout_fixe montre qu'il degrade la recherche au lieu de la
+# guider : a nombre de vehicules constant (6 pour 200, 400, 600 et
+# 1000 km), le terme est une constante et ne devrait pas changer la
+# solution optimale ; la distance passe pourtant de 5375 a 10266 km. La
+# solution trouvee sans cout fixe reste meilleure sous tous les couts
+# testes, l'ecart croissant avec la valeur.
+#
+# Remplace par un plafond de flotte (campagne "flotte"), qui est une
+# contrainte et non une penalite. Cause du decrochage a investiguer
+# en S6 : piste GLS, dont la calibration interne depend de l'ordre de
+# grandeur de l'objectif.
+COUT_FIXE_VEHICULE_M = 0
+
 # 60 s. Le plateau reel est a 120 s (-5,1 % entre 60 et 120 sur le probleme
 # contraint, puis -0,1 % entre 120 et 300), mais l'endpoint
 # POST /optimisations du J5 est synchrone et 120 s depasse les delais
 # d'expiration usuels des passerelles HTTP. On concede ces 5 % a la
 # robustesse du service. Un passage en traitement asynchrone leverait la
 # contrainte.
+#
+# A REMESURER au J4 : la contrainte de station source decoupe le probleme
+# en cinq sous-problemes independants, nettement plus faciles. 60 s sera
+# probablement trop genereux.
 LIMITE_SECONDES = 60
 
 # Strategie de recherche. Noms des enums OR-Tools, resolus par getattr dans
 # resoudre() : passer des chaines plutot que des constantes permet de
 # piloter la campagne de calibration depuis la ligne de commande.
 #
-# Retenus au J3 apres comparaison de 12 couples a 60 s sur le probleme
-# contraint : 4035,1 km contre 4319,5 pour PATH_CHEAPEST_ARC +
-# GUIDED_LOCAL_SEARCH (couple par defaut d'OR-Tools), soit 6,6 % de gain a
-# budget egal. TABU_SEARCH domine SIMULATED_ANNEALING dans les quatre
-# familles de solution initiale testees, sans exception.
+# Retenus au J3 : 4758,9 km, meilleur des 12 couples a 60 s sur le
+# probleme contraint. GUIDED_LOCAL_SEARCH domine TABU_SEARCH dans trois
+# familles sur quatre. SIMULATED_ANNEALING est dernier partout, dans les
+# deux campagnes menees, sans exception.
 PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
-METAHEURISTIQUE = "TABU_SEARCH"
+METAHEURISTIQUE = "GUIDED_LOCAL_SEARCH"
 
 # ---------------------------------------------------------------------------
 # Compatibilite caisson (hypothese B, decision D-serie)
@@ -118,6 +149,7 @@ def resoudre(ctx: ContexteSolveur,
              limite_secondes: int = LIMITE_SECONDES,
              penalite: int = PENALITE_ABANDON_M,
              caissons: bool = True,
+             cout_fixe: int = COUT_FIXE_VEHICULE_M,
              premiere_solution: str = PREMIERE_SOLUTION,
              metaheuristique: str = METAHEURISTIQUE,
              journal: bool = False) -> Resultat:
@@ -135,6 +167,15 @@ def resoudre(ctx: ContexteSolveur,
 
     idx_cout = routing.RegisterTransitCallback(cout_arc)
     routing.SetArcCostEvaluatorOfAllVehicles(idx_cout)
+
+    # --- cout fixe d'ouverture d'un vehicule (D31, desactive par defaut) ---
+    # Applique aux seuls vehicules effectivement utilises : une tournee
+    # vide ne coute rien. Entre dans l'objectif, PAS dans les distances
+    # remontees par GetArcCostForVehicle -- distance_totale_m reste donc
+    # une distance reelle. Conserve pour la reproductibilite de la
+    # campagne cout_fixe ; a zero, l'appel est saute.
+    if cout_fixe:
+        routing.SetFixedCostOfAllVehicles(cout_fixe)
 
     # --- dimension capacite ----------------------------------------------
     demandes = ctx.demandes
@@ -199,6 +240,12 @@ def _restreindre_par_caisson(ctx: ContexteSolveur, manager, routing) -> dict[int
 
     Le dictionnaire renvoye n'est pas consomme par resoudre() ; il sert au
     diagnostic et aux tests (quels vehicules restent ouverts a quel lot).
+
+    ValueError sur lot sans vehicule compatible : cas theorique tant que
+    la source n'est pas contrainte. Au J4 il deviendra courant (un lot
+    refrigere partant d'un depot sans vehicule refrigere) et devra etre
+    detecte par controler() AVANT resolution, une exception dans un
+    endpoint web n'etant pas un diagnostic exploitable.
     """
     restrictions: dict[int, list[int]] = {}
 

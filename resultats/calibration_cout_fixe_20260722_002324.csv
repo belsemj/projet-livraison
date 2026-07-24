@@ -1,0 +1,7 @@
+campagne,horodatage,limite_s,penalite,caissons,cout_fixe,premiere_solution,metaheuristique,nb_vehicules,statut,distance_km,vehicules_utilises,lots_servis,lots_non_servis,ids_non_servis,duree_s
+cout_fixe,2026-07-22T00:18:24,60,5000000,True,0,,,11,resolu,4150.3,7,120,0,,60.0
+cout_fixe,2026-07-22T00:19:24,60,5000000,True,100000,,,11,resolu,4758.9,7,120,0,,60.0
+cout_fixe,2026-07-22T00:20:24,60,5000000,True,200000,,,11,resolu,5375.2,6,120,0,,60.0
+cout_fixe,2026-07-22T00:21:24,60,5000000,True,400000,,,11,resolu,6657.8,6,120,0,,60.0
+cout_fixe,2026-07-22T00:22:24,60,5000000,True,600000,,,11,resolu,7926.5,6,120,0,,60.0
+cout_fixe,2026-07-22T00:23:24,60,5000000,True,1000000,,,11,resolu,10265.8,6,120,0,,60.0
