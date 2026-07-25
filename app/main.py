@@ -1,4 +1,7 @@
-from app.routers import station, destination, lot, chauffeur, vehicule, tournee, affectation, distances
+from app.routers import (
+    station, destination, lot, chauffeur, vehicule,
+    tournee, affectation, distances, optimisation,
+)
 from fastapi import FastAPI
 
 app = FastAPI(title="Application d'affectation des livraisons")
@@ -10,6 +13,7 @@ app.include_router(vehicule.router)
 app.include_router(tournee.router)
 app.include_router(affectation.router)
 app.include_router(distances.router)
+app.include_router(optimisation.router)
 
 
 @app.get("/")
