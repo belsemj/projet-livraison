@@ -1,0 +1,32 @@
+"""
+Vide les runs d'optimisation (tournees + affectations).
+
+id_run n'est pas une sequence : il est calcule par MAX(id_run)+1 a chaque
+POST. Vider ces deux tables suffit donc a faire repartir la numerotation
+a 1 au prochain lancement -- aucun compteur a reinitialiser.
+
+Les tables d'ENTREE (station, destination, lot, vehicule, chauffeur) ne
+sont PAS touchees : on n'efface que les resultats produits par le solveur.
+
+Usage (depuis la racine) :
+    python -m scripts.vider_runs
+"""
+
+from app.database import SessionLocal
+from app.models.tournee import Tournee
+from app.models.affectation import Affectation
+
+
+def main() -> None:
+    db = SessionLocal()
+    try:
+        nb_aff = db.query(Affectation).delete()
+        nb_tour = db.query(Tournee).delete()
+        db.commit()
+        print(f"supprime : {nb_aff} affectations, {nb_tour} tournees")
+        print("le prochain POST /optimisations repartira a id_run = 1")
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
