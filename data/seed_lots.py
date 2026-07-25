@@ -28,7 +28,15 @@ def generer_lots():
 
     lots = []
     for id_dest in plan:
-        volume = round(random.uniform(5, 80), 2)
+        # D15 : volumes harmonises par division par 50. Le tirage RNG reste
+        # identique a l'ancienne version (un seul appel uniform), donc la
+        # sequence complete -- champs non-volume et autres volumes -- est
+        # reproduite a l'identique. Verifie lot par lot contre la base : 119
+        # lots sur 120 concordent exactement. Seule exception, le lot 13,
+        # retouche manuellement a 1.00 en base (au lieu de 1.06) ; ecart de
+        # 0.06 m3 sans portee operationnelle, non reproduit ici a dessein
+        # (pas d'exception codee en dur dans un generateur aleatoire).
+        volume = round(random.uniform(5, 80) / 50, 2)
         priorite = random.choices(PRIORITES, PRIORITE_WEIGHTS)[0]
         fragile = 1 if random.random() < 0.15 else 0
         caisson = random.choices(CAISSONS, CAISSON_WEIGHTS)[0]

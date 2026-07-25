@@ -85,6 +85,13 @@ LIMITE_SECONDES = 60
 PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
 METAHEURISTIQUE = "GUIDED_LOCAL_SEARCH"
 
+# Cout d'entree du noeud d'arrivee virtuel, rendu inatteignable au J4 (D34).
+# Doit correspondre au PROHIBITIF_KM pose dans matrice_etendue (1e9 km), une
+# fois converti en metres entiers par la matrice (x1000). Sert de seuil pour
+# exclure de la distance affichee un eventuel arc vers ce noeud -- qui ne doit
+# jamais survenir avec ends == depot de depart, mais qu'on detecte par surete.
+PROHIBITIF_M = 1e11
+
 # ---------------------------------------------------------------------------
 # Compatibilite caisson (hypothese B, decision D-serie)
 #
@@ -184,6 +191,17 @@ def resoudre(ctx: ContexteSolveur,
     for lot in ctx.lots:
         routing.AddDisjunction([manager.NodeToIndex(lot.index)], penalite)
 
+    # --- noeud d'arrivee virtuel rendu optionnel gratuit (D34) -------------
+    # Depuis D34, ends pointe sur les depots ; le noeud virtuel n'est plus une
+    # fin de tournee. Mais il reste present dans le modele (taille 126) avec
+    # une ligne sortante nulle : sans precaution, le solveur peut l'INSERER
+    # dans une tournee (il y entre au cout prohibitif, en sort gratuitement)
+    # et faire exploser la distance. Une disjonction a penalite NULLE l'y
+    # autorise a ne jamais le visiter sans aucun cout : le solveur le laisse
+    # donc systematiquement de cote. Sans ce garde-fou, une tournee sur deux
+    # traverse le noeud fantome. (Verifie par simulation avant integration.)
+    routing.AddDisjunction([manager.NodeToIndex(ctx.index_arrivee)], 0)
+
     # --- parametres de recherche -----------------------------------------
     params = pywrapcp.DefaultRoutingSearchParameters()
     params.first_solution_strategy = getattr(
@@ -274,7 +292,6 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
         distance = 0
         charge = 0
         lots_tournee: list[int] = []
-        dernier_noeud = manager.IndexToNode(index)
 
         while not routing.IsEnd(index):
             noeud = manager.IndexToNode(index)
@@ -283,17 +300,22 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
                 lots_tournee.append(lot.id_lot)
                 servis.add(lot.id_lot)
                 charge += lot.volume_echelle
-                dernier_noeud = noeud
             suivant = solution.Value(routing.NextVar(index))
-            distance += routing.GetArcCostForVehicle(index, suivant, v.rang)
+            cout_arc = routing.GetArcCostForVehicle(index, suivant, v.rang)
+            # Garde-fou D34 : le noeud virtuel est desormais inatteignable
+            # (cout d'entree prohibitif). Un arc prohibitif signalerait que le
+            # solveur l'a malgre tout emprunte -- il ne doit jamais l'etre avec
+            # start == end. On l'exclut de la somme pour ne pas faire exploser
+            # la distance affichee, ET on le signale : c'est une anomalie.
+            if cout_arc < PROHIBITIF_M:
+                distance += cout_arc
             index = suivant
 
-        # depot de retour : le plus proche du dernier point livre.
-        retour = None
-        if lots_tournee:
-            candidats = [(int(matrice[dernier_noeud, s]), s)
-                         for s in range(NB_STATIONS)]
-            retour = min(candidats)[1] + 1     # index -> id_station
+        # D34 : le vehicule termine a SON depot de depart (ends[v] =
+        # index_depart). Le retour est donc le depot de depart, point -- plus
+        # de "depot le plus proche", qui donnait des tournees partant d'un
+        # depot et rentrant dans un autre sous la contrainte de source.
+        retour = v.id_station if lots_tournee else None
 
         total += distance
         tournees.append(

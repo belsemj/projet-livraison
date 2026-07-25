@@ -187,11 +187,27 @@ def construire_contexte(db) -> ContexteSolveur:
 
     matrice_km = np.zeros((n, n), dtype=float)
     matrice_km[: n - 1, : n - 1] = sous
-    # colonne d'arrivee : retour au depot le plus proche
-    matrice_km[: n - 1, index_arrivee] = matrice_base[
-        np.ix_(projection, range(NB_STATIONS))
-    ].min(axis=1)
-    # ligne d'arrivee : rien n'en sort
+    # Noeud d'arrivee virtuel (index_arrivee) : DEVENU INERTE au J4 (D34).
+    #
+    # Avant D34, tous les vehicules terminaient sur ce noeud unique, dont le
+    # cout d'entree valait min_k d(i, station_k) : le retour au depot le plus
+    # PROCHE. Neutre tant qu'un vehicule pouvait finir pres de n'importe quel
+    # depot ; faux des que la contrainte de source impose a chaque vehicule de
+    # rentrer a SON depot. Le vehicule securise du depot 1 livrant dans le sud
+    # se voyait attribuer un retour vers le depot 5, sous-estimant la distance.
+    #
+    # D34 : ends pointe desormais sur le depot de depart de chaque vehicule
+    # (voir ContexteSolveur ci-dessous). Le retour reel est alors paye dans la
+    # matrice de base, qui code d(lot, depot) correctement. Le noeud virtuel
+    # n'est plus une destination : on le rend inatteignable (cout d'entree
+    # prohibitif) pour garantir qu'aucun vehicule ne l'emprunte, tout en
+    # conservant la taille 126 et les invariants qui en dependent.
+    #
+    # Nettoyage possible (tache cosmetique) : retirer le noeud et passer en
+    # 125x125. Non fait ici pour limiter la surface du correctif.
+    PROHIBITIF_KM = 1e9
+    matrice_km[: n - 1, index_arrivee] = PROHIBITIF_KM
+    # ligne d'arrivee : rien n'en sort (invariant conserve, teste par controler)
     matrice_km[index_arrivee, :] = 0.0
     np.fill_diagonal(matrice_km, 0.0)
 
@@ -206,7 +222,12 @@ def construire_contexte(db) -> ContexteSolveur:
         demandes=demandes,
         capacites=[v.capacite_echelle for v in vehicules],
         starts=[v.index_depart for v in vehicules],
-        ends=[index_arrivee] * len(vehicules),
+        # D34 : chaque vehicule termine a SON depot de depart (start == end),
+        # pas sur le noeud virtuel partage. OR-Tools accepte des ends partages
+        # entre vehicules d'un meme depot et compte correctement le retour au
+        # depot dans la distance (verifie). Corrige la sous-estimation de
+        # distance et le id_station_retour incoherent sous contrainte de source.
+        ends=[v.index_depart for v in vehicules],
         lots=lots,
         vehicules=vehicules,
         noeuds_base=noeuds_base,
