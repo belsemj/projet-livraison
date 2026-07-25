@@ -74,13 +74,19 @@ PENALITE_ABANDON_M = 5_000_000
 # contrainte et non une penalite.
 COUT_FIXE_VEHICULE_M = 0
 
-# 60 s. Le plateau reel est a 120 s, mais l'endpoint POST /optimisations
-# du J5 est synchrone et 120 s depasse les delais d'expiration usuels des
-# passerelles HTTP. On concede ces 5 % a la robustesse du service.
+# 45 s. Recalibree au S6 J1 sur le probleme DECOMPOSE (contrainte de source,
+# S5 J4). Le balayage 5-60 s montre un plateau a 30 s : 4446,5 km, inchange
+# jusqu'a 60 s. En dessous, la degradation est reelle (+0,3 % a 20 s, +3,9 %
+# a 15 s, +6,7 % a 5 s). On retient 45 s -- 50 % de marge au-dessus du plateau
+# observe, pour absorber la variance du temps mural et un eventuel glissement
+# du plateau sur les donnees reelles a venir -- soit 25 % de latence gagnee
+# par rapport aux 60 s calibres au S5 J3 sur le probleme monolithique.
+# La borne de requete (le=120) permet d'ajuster a la hausse sans redeploiement.
 #
-# A REMESURER au J4 : la contrainte de station source decoupe le probleme
-# en cinq sous-problemes independants, nettement plus faciles.
-LIMITE_SECONDES = 60
+# Reserve : recalibrage mesure sous uvicorn sans --reload (le reloader
+# WatchFiles ajoutait +9,9 % en pompant du CPU en tache de fond -- verifie
+# au S6 J1). A refaire si l'on passe le solveur en asynchrone.
+LIMITE_SECONDES = 45
 
 PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
 METAHEURISTIQUE = "GUIDED_LOCAL_SEARCH"

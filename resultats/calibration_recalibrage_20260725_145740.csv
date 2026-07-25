@@ -1,0 +1,8 @@
+campagne,horodatage,limite_s,penalite,caissons,cout_fixe,premiere_solution,metaheuristique,nb_vehicules,statut,distance_km,vehicules_utilises,lots_servis,lots_non_servis,ids_non_servis,duree_s
+recalibrage,2026-07-25T14:54:40,5,5000000,True,0,,,11,resolu,4742.2,9,120,0,,5.0
+recalibrage,2026-07-25T14:54:50,10,5000000,True,0,,,11,resolu,4621.6,9,120,0,,10.0
+recalibrage,2026-07-25T14:55:05,15,5000000,True,0,,,11,resolu,4621.6,9,120,0,,15.0
+recalibrage,2026-07-25T14:55:25,20,5000000,True,0,,,11,resolu,4461.6,9,120,0,,20.0
+recalibrage,2026-07-25T14:55:55,30,5000000,True,0,,,11,resolu,4446.5,9,120,0,,30.0
+recalibrage,2026-07-25T14:56:40,45,5000000,True,0,,,11,resolu,4446.5,9,120,0,,45.0
+recalibrage,2026-07-25T14:57:40,60,5000000,True,0,,,11,resolu,4446.5,9,120,0,,60.0
