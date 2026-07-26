@@ -5,9 +5,20 @@ from app.database import get_db
 from app.crud import run as crud_run
 from app.crud.carte import assembler_carte
 from app.services.carte_folium import rendre_carte_html
-from app.schemas.run import RunLu
+from app.schemas.run import RunLu, RunResume
 
 router = APIRouter(prefix="/runs", tags=["runs"])
+
+
+@router.get("", response_model=list[RunResume])
+def lister_runs(db: Session = Depends(get_db)):
+    """Liste les runs existants (historique), le plus recent d'abord.
+
+    Il n'existe pas de table 'run' : chaque entree est un id_run distinct
+    present sur 'tournee', avec un resume recalcule a la lecture. Renvoie une
+    liste vide s'il n'y a aucun run. Alimente le futur selecteur de run du front.
+    """
+    return crud_run.lister_runs(db)
 
 
 @router.get("/{id_run}", response_model=RunLu)

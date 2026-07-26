@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
@@ -35,3 +36,17 @@ class RunLu(BaseModel):
     nb_lots_servis: int
     distance_totale_km: float
     tournees: list[TourneeLue]
+
+
+class RunResume(BaseModel):
+    """Une ligne de la liste des runs (historique).
+
+    Meme socle que RunLu mais sans les tournees imbriquees : juste de quoi
+    afficher et selectionner un run. Le resume est recalcule a la lecture,
+    'date_calcul' etant le MAX des date_calcul des tournees du run.
+    """
+    id_run: int
+    nb_tournees: int
+    nb_lots_servis: int
+    distance_totale_km: float
+    date_calcul: datetime
