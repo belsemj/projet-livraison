@@ -16,9 +16,10 @@ scikit-learn
 geopy
 
 # Cartographie
-folium
+folium==0.20.0
 
 alembic==1.18.5
 SQLAlchemy==2.0.51
+
 
 
