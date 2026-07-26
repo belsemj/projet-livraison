@@ -4,8 +4,26 @@ from app.routers import (
     tournee, affectation, distances, optimisation,
 )
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Application d'affectation des livraisons")
+
+# --- CORS : autorise le front Vite (dev) à appeler l'API ---
+# Le front tourne sur localhost:5173, l'API sur localhost:8000.
+# Ports différents = origines différentes → le navigateur bloque
+# les appels fetch sans cette autorisation explicite.
+origines_autorisees = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origines_autorisees,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(station.router)
 app.include_router(destination.router)
 app.include_router(lot.router)

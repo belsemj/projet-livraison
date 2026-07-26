@@ -37,3 +37,21 @@ def lire_carte_run(id_run: int, db: Session = Depends(get_db)):
             detail=f"Run {id_run} introuvable",
         )
     return HTMLResponse(content=rendre_carte_html(data))
+
+
+@router.get("/{id_run}/carte-json")
+def lire_carte_json_run(id_run: int, db: Session = Depends(get_db)):
+    """Renvoie la structure geo du run en JSON brut (Option B, Leaflet).
+
+    C'est exactement la structure produite par assembler_carte() — le meme
+    socle que la carte Folium (Option A), mais servi tel quel au lieu d'etre
+    rendu en HTML. Le front react-leaflet consomme ce JSON et dessine
+    lui-meme depots, destinations et tournees.
+    """
+    data = assembler_carte(db, id_run)
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Run {id_run} introuvable",
+        )
+    return data
