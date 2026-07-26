@@ -132,3 +132,5 @@ et deux vehicules plafonnent a 40,00. Les lots securises sont consolides au
 depot 1 par regle de donnees, faute de quoi le solveur devrait modeliser des
 noeuds de ramassage. Modification de donnees de reference, de meme nature que
 D15 : artefact de jeu de test, a valider par M. Zghili.
+
+D33 l'endpoint détail GET /runs/{id_run} remonte désormais id_destination et nom_destination au niveau arrêt (jointure Lot → Destination dans crud/run.py). L'écran détail affiche « Nom (id) ». La version « ids seulement » de D32 est levée pour cet endpoint.

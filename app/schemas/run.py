@@ -3,11 +3,13 @@ from pydantic import BaseModel, ConfigDict
 
 
 class AffectationLue(BaseModel):
-    """Un arret dans une tournee. Version legere : ids uniquement."""
+    """Un arret dans une tournee. Ids + nom de destination (lisible)."""
     model_config = ConfigDict(from_attributes=True)
 
     ordre_visite: int
     id_lot: int
+    id_destination: int | None
+    nom_destination: str | None
     quantite: float
 
 
