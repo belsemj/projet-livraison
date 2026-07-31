@@ -167,7 +167,7 @@ def mesurer(ctx: ContexteSolveur, campagne: str, **kw) -> dict:
         "vehicules_utilises": res.nb_vehicules_utilises,
         "lots_servis": len(ctx.lots) - len(res.lots_non_servis),
         "lots_non_servis": len(res.lots_non_servis),
-        "ids_non_servis": " ".join(str(i) for i in res.lots_non_servis),
+        "ids_non_servis": " ".join(str(i) for i in res.ids_non_servis),
         "duree_s": round(duree, 1),
     }
     print(

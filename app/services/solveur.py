@@ -127,16 +127,41 @@ class TourneeResultat:
         return [id_lot for id_lot, _ in self.arrets]
 
 
+@dataclass(frozen=True)
+class LotNonServi:
+    """Un lot que le solveur n'a pas livre, avec la CAUSE derivee de son etat.
+
+    Source unique de verite : la raison est deduite de l'etat solveur post-solve,
+    jamais d'un pre-diagnostic (evite deux inferences concurrentes).
+
+    raison :
+      - "abandon_solveur" : aucun vehicule compatible (caisson absent au depot
+        ou mauvaise station source) -> domaine VehicleVar [-1], lache par
+        disjonction.
+      - "capacite_locale"  : des vehicules compatibles existent, mais leur
+        capacite cumulee au depot ne suffit pas -> surplus lache.
+      - "echec_solveur"    : le solveur n'a produit aucune solution (statut
+        'echec') ; tous les lots ressortent alors ainsi.
+    """
+    id_lot: int
+    raison: str
+
+
 @dataclass
 class Resultat:
     tournees: list[TourneeResultat]
-    lots_non_servis: list[int]
+    lots_non_servis: list[LotNonServi]
     distance_totale_m: int
     statut: str
 
     @property
     def nb_vehicules_utilises(self) -> int:
         return sum(1 for t in self.tournees if t.arrets)
+
+    @property
+    def ids_non_servis(self) -> list[int]:
+        """Retro-compat (scripts de calibration) : ids seuls, sans raison."""
+        return [l.id_lot for l in self.lots_non_servis]
 
 
 def resoudre(ctx: ContexteSolveur,
@@ -186,9 +211,14 @@ def resoudre(ctx: ContexteSolveur,
     # Caisson (hypothese B) et station source (D33) restreignent le domaine de
     # VehicleVar. On les combine dans un seul passage ; la restriction d'un lot
     # s'applique identiquement a chacune de ses parts. Chacune debrayable.
+    #
+    # Le domaine autorise est calcule TOUJOURS (pur, sans toucher au modele) :
+    # il sert au domaine VehicleVar mais AUSSI au diagnostic post-solve d'un lot
+    # non servi (aucun vehicule autorise -> abandon_solveur ; sinon capacite).
+    # Il n'est APPLIQUE au modele que si au moins une contrainte est active.
+    autorises_par_lot = _vehicules_autorises(ctx, caissons=caissons, source=source)
     if caissons or source:
-        _restreindre_vehicules(ctx, manager, routing,
-                               caissons=caissons, source=source)
+        _restreindre_vehicules(ctx, manager, routing, autorises_par_lot)
 
     # --- disjonctions + tout-ou-rien par lot (D28 ; parts S7) -------------
     # Chaque PART est optionnelle (droppable) moyennant une part de penalite.
@@ -225,16 +255,21 @@ def resoudre(ctx: ContexteSolveur,
 
     solution = routing.SolveWithParameters(params)
     if solution is None:
-        return Resultat([], [l.id_lot for l in ctx.lots], 0, "echec")
+        return Resultat(
+            [],
+            [LotNonServi(l.id_lot, "echec_solveur") for l in ctx.lots],
+            0,
+            "echec",
+        )
 
-    return _extraire(ctx, manager, routing, solution)
+    return _extraire(ctx, manager, routing, solution, autorises_par_lot)
 
 
-def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
-                           caissons: bool = True,
-                           source: bool = True) -> dict[int, list[int]]:
+def _vehicules_autorises(ctx: ContexteSolveur,
+                         caissons: bool = True,
+                         source: bool = True) -> dict[int, list[int]]:
     """
-    Limite chaque PART aux vehicules autorises par les contraintes actives.
+    Calcule, pour chaque lot, les vehicules autorises par les contraintes actives.
 
     Un vehicule est autorise pour un lot (donc pour chacune de ses parts) si
     TOUTES les conditions activees sont satisfaites :
@@ -244,21 +279,15 @@ def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
     Le rang du vehicule (v.rang) est l'identifiant attendu par OR-Tools : la
     position dans les tableaux starts/ends, pas l'id_vehicule de la base.
 
-    Passe par VehicleVar().SetValues() plutot que SetAllowedVehiclesForIndex()
-    (typemap SWIG defaillant en ortools 9.15). La valeur -1 doit figurer dans
-    le domaine : c'est celle prise quand le noeud n'est visite par aucun
-    vehicule ; l'omettre rendrait la disjonction inoperante.
+    Fonction PURE : ne touche pas au modele. Son resultat sert a deux usages :
+      1. poser le domaine VehicleVar (via _restreindre_vehicules) ;
+      2. diagnostiquer, post-solve, la raison d'un lot non servi -- liste vide
+         => aucun vehicule compatible => 'abandon_solveur'.
 
-    Part sans vehicule autorise : domaine [-1], donc jamais visitee -> le lot
-    (toutes parts liees) est abandonne par disjonction. On NE leve PLUS
-    d'exception : controler() a deja signale ces lots ('[info]'), et un abandon
-    propre vaut mieux qu'une ValueError en plein solve dans un contexte web.
-
-    Le dictionnaire renvoye (id_lot -> vehicules autorises) sert au diagnostic
-    et aux tests. Les parts d'un lot partagent le meme domaine autorise.
+    Renvoie id_lot -> liste des rangs autorises. Les parts d'un lot partagent
+    le meme domaine, donc on l'exprime au niveau lot.
     """
-    restrictions: dict[int, list[int]] = {}
-
+    autorises_par_lot: dict[int, list[int]] = {}
     for lot in ctx.lots:
         autorises = []
         for v in ctx.vehicules:
@@ -268,18 +297,34 @@ def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
                     and v.id_station != lot.id_station_source:
                 continue
             autorises.append(int(v.rang))
+        autorises_par_lot[lot.id_lot] = autorises
+    return autorises_par_lot
 
-        # meme domaine autorise applique a chaque part du lot
-        for p in lot.parts:
+
+def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
+                           autorises_par_lot: dict[int, list[int]]) -> None:
+    """
+    Applique a chaque PART le domaine VehicleVar de son lot.
+
+    Passe par VehicleVar().SetValues() plutot que SetAllowedVehiclesForIndex()
+    (typemap SWIG defaillant en ortools 9.15). La valeur -1 doit figurer dans
+    le domaine : c'est celle prise quand le noeud n'est visite par aucun
+    vehicule ; l'omettre rendrait la disjonction inoperante.
+
+    Part sans vehicule autorise : domaine [-1], donc jamais visitee -> le lot
+    (toutes parts liees) est abandonne par disjonction. On NE leve PAS
+    d'exception : controler() a deja signale ces lots ('[info]'), et un abandon
+    propre vaut mieux qu'une ValueError en plein solve dans un contexte web.
+    """
+    lot_par_id = {lot.id_lot: lot for lot in ctx.lots}
+    for id_lot, autorises in autorises_par_lot.items():
+        for p in lot_par_id[id_lot].parts:
             idx = manager.NodeToIndex(p.index)
             routing.VehicleVar(idx).SetValues(autorises + [-1])
 
-        restrictions[lot.id_lot] = autorises
 
-    return restrictions
-
-
-def _extraire(ctx, manager, routing, solution) -> Resultat:
+def _extraire(ctx, manager, routing, solution,
+              autorises_par_lot: dict[int, list[int]]) -> Resultat:
     """Traduit la solution OR-Tools en objets metier (niveau part)."""
     # index de part -> (lot, part)
     part_par_index: dict[int, tuple] = {}
@@ -331,10 +376,17 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
 
     # Un lot est servi SSI toutes ses parts le sont. Le tout-ou-rien le
     # garantit deja (toutes ou aucune), mais on le verifie sans le supposer.
-    non_servis = [
-        lot.id_lot for lot in ctx.lots
-        if not all(p.index in parts_servies for p in lot.parts)
-    ]
+    # Chaque lot non servi porte sa RAISON, derivee de l'etat solveur (source
+    # unique de verite) :
+    #   - aucun vehicule autorise (caisson/source) -> abandon_solveur
+    #   - vehicules autorises mais lot lache         -> capacite_locale
+    non_servis: list[LotNonServi] = []
+    for lot in ctx.lots:
+        if all(p.index in parts_servies for p in lot.parts):
+            continue
+        autorises = autorises_par_lot.get(lot.id_lot, [])
+        raison = "abandon_solveur" if not autorises else "capacite_locale"
+        non_servis.append(LotNonServi(id_lot=lot.id_lot, raison=raison))
     return Resultat(tournees, non_servis, total, "resolu")
 
 
@@ -360,5 +412,8 @@ def resume(res: Resultat, ctx: ContexteSolveur) -> str:
             f" ({taux:5.1f} %)"
         )
     if res.lots_non_servis:
-        lignes += ["", f"lots non servis : {res.lots_non_servis}"]
+        details = ", ".join(
+            f"{l.id_lot} ({l.raison})" for l in res.lots_non_servis
+        )
+        lignes += ["", f"lots non servis : {details}"]
     return "\n".join(lignes)

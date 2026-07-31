@@ -417,13 +417,26 @@ def controler(ctx: ContexteSolveur) -> list[str]:
                     f"({nb} lot(s), {charge/ECHELLE:.2f} m3) — abandon par disjonction"
                 )
             elif charge > capa:
+                # Capacite locale insuffisante : des porteurs du bon caisson
+                # existent, mais leur capacite cumulee au depot ne couvre pas
+                # toute la charge. Le solveur en servira autant qu'il peut et
+                # lachera le surplus par disjonction (raison capacite_locale au
+                # niveau lot). NON bloquant : c'est un resultat d'exploitation,
+                # pas une erreur de donnees -> plus de 409 (S7 J3).
                 a.append(
-                    f"depot {depot}, caisson '{besoin}' infaisable : charge "
-                    f"{charge/ECHELLE:.2f} > capacite locale {capa/ECHELLE:.2f}"
+                    f"[info] depot {depot}, caisson '{besoin}' : charge locale "
+                    f"{charge/ECHELLE:.2f} > capacite {capa/ECHELLE:.2f} m3 — "
+                    f"surplus abandonne par disjonction (capacite_locale)"
                 )
 
-    # garde-fou global conserve
+    # Garde-fou global : la demande totale depasse la capacite totale de la
+    # flotte. Meme logique que la capacite locale (S7 J3) : le solveur lachera
+    # le surplus par disjonction (capacite_locale au niveau lot). NON bloquant
+    # -> reste un diagnostic dans 'avertissements', jamais un 409.
     if sum(ctx.demandes) > sum(ctx.capacites):
-        a.append("charge totale superieure a la capacite totale")
+        a.append(
+            "[info] charge totale > capacite totale de la flotte — "
+            "surplus abandonne par disjonction (capacite_locale)"
+        )
 
     return a
