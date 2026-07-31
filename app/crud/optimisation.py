@@ -1,5 +1,5 @@
 """
-Persistance d'un run d'optimisation (S6 J1 ; parts S7).
+Persistance d'un run d'optimisation (S6 J1 ; parts S7 ; raison S7 J3).
 
 Traduit un Resultat de solveur en lignes `tournee` et `affectation`, sous un
 id_run donne. Un ecart entre le resultat solveur et le schema est resorbe ici,
@@ -15,6 +15,11 @@ une affectation par arret, avec la quantite de la part (en m3). Le
 tout-ou-rien garantit qu'un lot persiste est toujours livre en entier : la
 somme des quantites de ses affectations vaut son volume.
 
+S7 J3 -- lots non servis : on persiste aussi, PAR RUN, les lots que le solveur
+n'a pas livres et leur raison typee (table lot_non_servi). C'est la trace
+durable du "pourquoi", relue par le detail du run et la carte (fin de la
+divergence J2). Ecrite dans la MEME transaction que les tournees.
+
 Seules les tournees NON VIDES sont persistees : un vehicule inutilise renvoie
 id_station_retour=None (or la colonne est NOT NULL) et n'a pas de sens metier.
 
@@ -26,6 +31,7 @@ from sqlalchemy import func
 from app.models.tournee import Tournee
 from app.models.affectation import Affectation
 from app.models.vehicule import Vehicule
+from app.models.lot_non_servi import LotNonServi as LotNonServiRow
 from app.services.matrice_etendue import ECHELLE
 
 
@@ -36,7 +42,8 @@ def prochain_id_run(db) -> int:
 
 
 def persister(db, res, ctx, id_run: int) -> None:
-    """Ecrit les tournees non vides et leurs affectations pour `id_run`."""
+    """Ecrit les tournees non vides, leurs affectations, et les lots non servis
+    pour `id_run`."""
     tournees_pleines = [t for t in res.tournees if t.arrets]
 
     # id_vehicule -> id_chauffeur (une lecture pour toute la flotte utilisee).
@@ -69,3 +76,13 @@ def persister(db, res, ctx, id_run: int) -> None:
                 id_tournee=tournee.id_tournee,
                 id_lot=id_lot,
             ))
+
+    # Lots non servis : trace durable (id_run, id_lot, raison). Meme transaction
+    # tout-ou-rien que les tournees. res.lots_non_servis porte deja la raison
+    # derivee de l'etat solveur (source unique de verite, S7 J3).
+    for lns in res.lots_non_servis:
+        db.add(LotNonServiRow(
+            id_run=id_run,
+            id_lot=lns.id_lot,
+            raison=lns.raison,
+        ))

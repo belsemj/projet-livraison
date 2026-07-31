@@ -5,6 +5,7 @@ from app.models.vehicule import Vehicule
 from app.models.lot import Lot
 from app.models.tournee import Tournee
 from app.models.affectation import Affectation
+from app.models.lot_non_servi import LotNonServi
 
 __all__ = [
     "Station",
@@ -14,4 +15,5 @@ __all__ = [
     "Lot",
     "Tournee",
     "Affectation",
+    "LotNonServi",
 ]
