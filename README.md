@@ -134,3 +134,31 @@ noeuds de ramassage. Modification de donnees de reference, de meme nature que
 D15 : artefact de jeu de test, a valider par M. Zghili.
 
 D33 l'endpoint détail GET /runs/{id_run} remonte désormais id_destination et nom_destination au niveau arrêt (jointure Lot → Destination dans crud/run.py). L'écran détail affiche « Nom (id) ». La version « ids seulement » de D32 est levée pour cet endpoint.
+
+D35 — Fractionnement clos : canal unifié « lot non servi » à raison typée.
+
+Décision. Un lot non livré remonte désormais par un seul canal, avec une
+raison typée dérivée de l'état solveur post-solve (source unique de vérité,
+non un pré-diagnostic) : abandon_solveur (aucun véhicule compatible :
+caisson/source) ou capacite_locale (véhicules compatibles, capacité
+insuffisante).
+
+Conséquences.
+
+- controler() : toute insuffisance de capacité (locale par dépôt×caisson ET
+  globale flotte) passe en [info] non bloquant. Plus aucun 409 sur une
+  question de volume ; le solveur lâche le surplus par disjonction. Restent
+  bloquantes les seules erreurs de données/modèle (matrice, géométrie,
+  station source manquante).
+- solveur : \_restreindre_vehicules scindé ; le domaine autorisé par lot,
+  jusque-là jeté, est capturé et sert à classer chaque non-servi.
+- Persistance : nouvelle table lot_non_servi (id_run, id_lot, raison),
+  écrite dans la transaction du run. id_run entier sans FK (cohérent avec
+  tournee). Migration d4f7a2c9e1b6.
+- Lecture : GET /runs/{id} et la carte lisent ce fait persisté ; fin de la
+  divergence J2 (map vs résumé). Priorité couleur révisée : rouge > vert >
+  gris (une destination avec au moins un lot abandonné est rouge, l'abandon
+  n'est jamais masqué par un lot servi voisin).
+
+Dette. Clé de statut carto « hors_vague » conservée pour compat front alors
+que sa sémantique est devenue « autre destination » ; renommage différé.
