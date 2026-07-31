@@ -3,6 +3,13 @@ import { useParams, Link } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
+// Libelles lisibles des raisons d'abandon (miroir des valeurs solveur/API)
+const LIBELLE_RAISON = {
+  abandon_solveur: "Aucun véhicule compatible",
+  capacite_locale: "Capacité locale insuffisante",
+  echec_solveur: "Échec du solveur",
+};
+
 export default function RunDetail() {
   const { idRun } = useParams(); // chaine issue de l'URL
   const [data, setData] = useState(null); // null = chargement
@@ -40,19 +47,62 @@ export default function RunDetail() {
 // --- Contenu d'un run charge ---
 function RunContenu({ data }) {
   const tournees = data.tournees ?? [];
+  const nonServis = data.lots_non_servis ?? [];
+  const nbNonServis = data.nb_lots_non_servis ?? nonServis.length;
+
   return (
     <>
       {/* Bandeau resume au niveau run */}
       <div style={resumeStyle}>
         <span><strong>{data.nb_tournees}</strong> tournées</span>
         <span><strong>{data.nb_lots_servis}</strong> lots servis</span>
+        {nbNonServis > 0 && (
+          <span style={{ color: "#c62828" }}>
+            <strong>{nbNonServis}</strong> non servis
+          </span>
+        )}
         <span><strong>{data.distance_totale_km}</strong> km au total</span>
       </div>
+
+      {/* Message d'abandon : lots non livres + raison (S7 J3) */}
+      {nonServis.length > 0 && <LotsNonServis lots={nonServis} />}
 
       {tournees.map((t) => (
         <TourneeCarte key={t.id_tournee} t={t} />
       ))}
     </>
+  );
+}
+
+// --- Lots non servis : panneau d'alerte + tableau (id, destination, raison) ---
+function LotsNonServis({ lots }) {
+  return (
+    <div style={alerteStyle}>
+      <div style={alerteTitreStyle}>
+        {lots.length} lot{lots.length > 1 ? "s" : ""} non livré
+        {lots.length > 1 ? "s" : ""}
+      </div>
+      <table style={tableStyle}>
+        <thead>
+          <tr>
+            <th style={thStyle}>Lot</th>
+            <th style={thStyle}>Destination</th>
+            <th style={thStyle}>Raison</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lots.map((l) => (
+            <tr key={l.id_lot}>
+              <td style={tdStyle}>{l.id_lot}</td>
+              <td style={tdStyle}>{formaterDestinationLot(l)}</td>
+              <td style={{ ...tdStyle, color: "#c62828" }}>
+                {LIBELLE_RAISON[l.raison] ?? l.raison}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -107,6 +157,15 @@ function formaterDestination(a) {
   return "—";
 }
 
+// Meme logique pour un lot non servi (mise en forme partagee)
+function formaterDestinationLot(l) {
+  if (l.nom_destination && l.id_destination != null)
+    return `${l.nom_destination} (${l.id_destination})`;
+  if (l.nom_destination) return l.nom_destination;
+  if (l.id_destination != null) return String(l.id_destination);
+  return "—";
+}
+
 // --- Styles ---
 const pageStyle = {
   display: "flex",
@@ -148,6 +207,24 @@ const resumeStyle = {
   fontSize: 14,
 };
 
+// Panneau d'alerte des lots non livres (rouge doux)
+const alerteStyle = {
+  border: "1px solid #f1c0c0",
+  borderRadius: 8,
+  marginBottom: 16,
+  overflow: "hidden",
+  background: "#fdf3f3",
+};
+
+const alerteTitreStyle = {
+  padding: "8px 12px",
+  background: "#f8e0e0",
+  borderBottom: "1px solid #f1c0c0",
+  fontWeight: "bold",
+  fontSize: 14,
+  color: "#c62828",
+};
+
 const carteStyle = {
   border: "1px solid #ddd",
   borderRadius: 8,
@@ -180,15 +257,15 @@ const tableStyle = {
 };
 
 const thStyle = {
-    textAlign: "left",
-    padding: "6px 12px",
-    borderBottom: "1px solid #ddd",
-    background: "#fafafa",
-    fontWeight: "bold",
-  };
+  textAlign: "left",
+  padding: "6px 12px",
+  borderBottom: "1px solid #ddd",
+  background: "#fafafa",
+  fontWeight: "bold",
+};
 
-  const tdStyle = {
-    textAlign: "left",
-    padding: "6px 12px",
-    borderBottom: "1px solid #f0f0f0",
-  };
+const tdStyle = {
+  textAlign: "left",
+  padding: "6px 12px",
+  borderBottom: "1px solid #f0f0f0",
+};

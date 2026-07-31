@@ -8,7 +8,9 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 // Libelle lisible d'un run dans le selecteur
 function libelleRun(r) {
   const date = new Date(r.date_calcul).toLocaleDateString("fr-FR");
-  return `Run ${r.id_run} — ${r.nb_tournees} tournées, ${r.nb_lots_servis} lots, ${r.distance_totale_km} km (${date})`;
+  const ns =
+    r.nb_lots_non_servis > 0 ? `, ${r.nb_lots_non_servis} non servis` : "";
+  return `Run ${r.id_run} — ${r.nb_tournees} tournées, ${r.nb_lots_servis} lots${ns}, ${r.distance_totale_km} km (${date})`;
 }
 
 export default function CarteView() {

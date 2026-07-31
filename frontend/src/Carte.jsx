@@ -40,11 +40,19 @@ const COULEUR_STATUT = {
   hors_vague: "#9e9e9e", // gris
 };
 
-// Libelles lisibles pour les popups
+// Libelles lisibles pour les popups (clef 'hors_vague' conservee cote back,
+// mais sa semantique est desormais "autre destination", pas "hors vague").
 const LIBELLE_STATUT = {
   servie: "Servie",
-  abandonnee: "Abandonnée",
-  hors_vague: "Hors vague",
+  abandonnee: "Non livrée",
+  hors_vague: "Autre destination",
+};
+
+// Libelles lisibles des raisons d'abandon (miroir des valeurs solveur/API)
+const LIBELLE_RAISON = {
+  abandon_solveur: "aucun véhicule compatible",
+  capacite_locale: "capacité locale insuffisante",
+  echec_solveur: "échec du solveur",
 };
 
 // Palette 9 tournees (memes couleurs que carte_folium.py)
@@ -222,29 +230,46 @@ export default function Carte({ idRun }) {
         {/* Destinations : cercles colores, filtres par statut visible */}
         {data.destinations
           .filter((dest) => statutsVisibles[dest.statut])
-          .map((dest, i) => (
-            <CircleMarker
-              key={`dest-${dest.nom}-${i}`}
-              center={[dest.lat, dest.lon]}
-              radius={5}
-              pathOptions={{
-                color: COULEUR_STATUT[dest.statut],
-                fillColor: COULEUR_STATUT[dest.statut],
-                fillOpacity: 0.9,
-              }}
-            >
-              <Tooltip>
-                {dest.nom} ({dest.gouvernorat})
-              </Tooltip>
-              <Popup>
-                <b>{dest.nom}</b>
-                <br />
-                Gouvernorat : {dest.gouvernorat}
-                <br />
-                Statut : {LIBELLE_STATUT[dest.statut] ?? dest.statut}
-              </Popup>
-            </CircleMarker>
-          ))}
+          .map((dest, i) => {
+            const nonServis = dest.lots_non_servis ?? [];
+            return (
+              <CircleMarker
+                key={`dest-${dest.nom}-${i}`}
+                center={[dest.lat, dest.lon]}
+                radius={5}
+                pathOptions={{
+                  color: COULEUR_STATUT[dest.statut],
+                  fillColor: COULEUR_STATUT[dest.statut],
+                  fillOpacity: 0.9,
+                }}
+              >
+                <Tooltip>
+                  {dest.nom} ({dest.gouvernorat})
+                </Tooltip>
+                <Popup>
+                  <b>{dest.nom}</b>
+                  <br />
+                  Gouvernorat : {dest.gouvernorat}
+                  <br />
+                  Statut : {LIBELLE_STATUT[dest.statut] ?? dest.statut}
+                  {nonServis.length > 0 && (
+                    <>
+                      <br />
+                      <b>Lot(s) non livré(s) :</b>
+                      <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                        {nonServis.map((l) => (
+                          <li key={l.id_lot}>
+                            Lot {l.id_lot} :{" "}
+                            {LIBELLE_RAISON[l.raison] ?? l.raison}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </Popup>
+              </CircleMarker>
+            );
+          })}
 
         {/* Tournees : polyligne + fleches de sens, filtrees par visibilite */}
         {data.tournees.map((t, i) => {
@@ -313,7 +338,7 @@ export default function Carte({ idRun }) {
             checked={statutsVisibles.abandonnee}
             onChange={() => basculerStatut("abandonnee")}
           />
-          <span style={{ color: COULEUR_STATUT.abandonnee }}>● Abandonnées</span>
+          <span style={{ color: COULEUR_STATUT.abandonnee }}>● Non livrées</span>
         </label>
 
         <label style={ligneStyle}>
@@ -322,7 +347,7 @@ export default function Carte({ idRun }) {
             checked={statutsVisibles.hors_vague}
             onChange={() => basculerStatut("hors_vague")}
           />
-          <span style={{ color: COULEUR_STATUT.hors_vague }}>● Hors vague</span>
+          <span style={{ color: COULEUR_STATUT.hors_vague }}>● Autres</span>
         </label>
 
         {/* Groupe Tournees : case parente + sous-cases (une par tournee) */}

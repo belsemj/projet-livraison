@@ -13,8 +13,15 @@ COULEUR_STATUT = {
 }
 LIBELLE_STATUT = {
     "servie": "Servie",
-    "abandonnee": "Abandonnee (dans la vague, non livree)",
-    "hors_vague": "Hors vague",
+    "abandonnee": "Non livree (au moins un lot abandonne)",
+    "hors_vague": "Autre destination",
+}
+
+# Libelles lisibles des raisons d'abandon (miroir des valeurs solveur).
+LIBELLE_RAISON = {
+    "abandon_solveur": "aucun vehicule compatible",
+    "capacite_locale": "capacite locale insuffisante",
+    "echec_solveur": "echec du solveur",
 }
 
 # Palette 9 couleurs pour les tournees. Choisies distinctes du vert/rouge/gris
@@ -32,12 +39,31 @@ PALETTE_TOURNEES = [
 ]
 
 
+def _popup_abandon(dest: dict) -> folium.Popup | None:
+    """Popup listant les lots non livres d'une destination + leur raison.
+
+    None si la destination n'a aucun lot abandonne (pas de popup superflu).
+    """
+    lots = dest.get("lots_non_servis") or []
+    if not lots:
+        return None
+    lignes = "".join(
+        f"<li>Lot {l['id_lot']} : {LIBELLE_RAISON.get(l['raison'], l['raison'])}</li>"
+        for l in lots
+    )
+    html = (
+        f"<b>{dest['nom']}</b> ({dest['gouvernorat']})<br>"
+        f"Lot(s) non livre(s) :<ul style='margin:4px 0 0 16px;padding:0;'>{lignes}</ul>"
+    )
+    return folium.Popup(html, max_width=280)
+
+
 def rendre_carte_html(data: dict) -> str:
     """Produit une page HTML Folium autonome a partir de la structure
     assemblee par app.crud.carte.assembler_carte().
 
     Socle Option A : cette fonction rend du HTML pret a embarquer. La meme
-    structure 'data' servira de JSON a Leaflet en Option B, sans y toucher.
+    structure 'data' sert de JSON a Leaflet en Option B, sans y toucher.
     """
     m = folium.Map(location=CENTRE_TUNISIE, zoom_start=ZOOM_INITIAL,
                    tiles="OpenStreetMap")
@@ -55,8 +81,8 @@ def rendre_carte_html(data: dict) -> str:
     # --- Destinations : 3 groupes toggables par statut ---------------------
     groupes_dest = {
         "servie": folium.FeatureGroup(name="Destinations servies", show=True),
-        "abandonnee": folium.FeatureGroup(name="Destinations abandonnees", show=True),
-        "hors_vague": folium.FeatureGroup(name="Destinations hors vague", show=False),
+        "abandonnee": folium.FeatureGroup(name="Destinations non livrees", show=True),
+        "hors_vague": folium.FeatureGroup(name="Autres destinations", show=False),
     }
     for dest in data["destinations"]:
         statut = dest["statut"]
@@ -68,6 +94,7 @@ def rendre_carte_html(data: dict) -> str:
             fill_color=COULEUR_STATUT[statut],
             fill_opacity=0.9,
             tooltip=f"{dest['nom']} ({dest['gouvernorat']}) - {LIBELLE_STATUT[statut]}",
+            popup=_popup_abandon(dest),   # None sauf si lots non livres
         ).add_to(groupes_dest[statut])
     for g in groupes_dest.values():
         g.add_to(m)
@@ -104,8 +131,8 @@ def rendre_carte_html(data: dict) -> str:
                 box-shadow: 0 1px 4px rgba(0,0,0,0.3);">
       <b>Run {data['id_run']}</b><br>
       <span style="color:{COULEUR_STATUT['servie']};">&#9679;</span> Servie<br>
-      <span style="color:{COULEUR_STATUT['abandonnee']};">&#9679;</span> Abandonnee<br>
-      <span style="color:{COULEUR_STATUT['hors_vague']};">&#9679;</span> Hors vague<br>
+      <span style="color:{COULEUR_STATUT['abandonnee']};">&#9679;</span> Non livree<br>
+      <span style="color:{COULEUR_STATUT['hors_vague']};">&#9679;</span> Autre<br>
       <span style="color:black;">&#9632;</span> Depot
     </div>
     """

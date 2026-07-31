@@ -6,6 +6,7 @@ from app.models.affectation import Affectation
 from app.models.lot import Lot
 from app.models.destination import Destination
 from app.models.station import Station
+from app.models.lot_non_servi import LotNonServi as LotNonServiRow
 
 
 def _coord(obj) -> dict:
@@ -17,20 +18,28 @@ def assembler_carte(db: Session, id_run: int) -> Optional[dict]:
     """Assemble toutes les donnees geo d'un run pour la cartographie.
 
     Socle unique : consomme par Folium aujourd'hui (Option A), expose
-    en JSON pour Leaflet plus tard (Option B), sans retouche.
+    en JSON pour Leaflet (Option B), sans retouche.
 
-    Ne reutilise PAS lire_run() : le run de J2 est volontairement leger
-    (D32, IDs seuls, aucune jointure). La carto fait sa propre requete
-    avec chargement en profondeur tournee -> affectation -> lot ->
-    destination. Deux endpoints, deux besoins, deux requetes.
+    Ne reutilise PAS lire_run() : chargement en profondeur propre a la carto
+    (tournee -> affectation -> lot -> destination). Deux endpoints, deux
+    besoins, deux requetes.
 
-    Code couleur destinations (D33-carto) :
-      - vert  = servie dans ce run
-      - rouge = lot present dans la vague du run mais non livree (abandonnee)
-      - gris  = toute autre destination de la base (hors vague)
-    Priorite si plusieurs lots sur une meme destination : vert > rouge > gris.
+    Code couleur destinations (D33-carto, REVISE S7 J3) :
+      - rouge = destination ayant AU MOINS un lot non servi dans ce run
+      - vert  = destination servie (et sans lot non servi)
+      - gris  = toute autre destination de la base
 
-    Retourne None si aucune tournee ne porte cet id_run (-> 404 cote router).
+    Priorite : ROUGE > vert > gris. L'abandon n'est JAMAIS masque par un lot
+    servi sur la meme destination. C'est la revision de la priorite J2
+    (vert > rouge) qui, quand un lot etait servi et un autre abandonne sur la
+    meme destination, affichait vert et cachait l'abandon -> divergence carte
+    vs resume. On lit maintenant le FAIT persiste (table lot_non_servi), plus
+    une inference "vague moins servis" au niveau destination.
+
+    Chaque destination porte 'lots_non_servis' : [{id_lot, raison}] (vide si
+    aucun), pour le popup.
+
+    Retourne None si le run n'existe pas (ni tournee ni lot non servi).
     """
     tournees = (
         db.query(Tournee)
@@ -45,48 +54,55 @@ def assembler_carte(db: Session, id_run: int) -> Optional[dict]:
         .order_by(Tournee.id_tournee)
         .all()
     )
-    if not tournees:
+
+    # Lots non servis PERSISTES pour ce run (fait, non infere). Chaque ligne
+    # porte id_lot + raison ; on joint Lot pour la destination a colorer.
+    lns_rows = (
+        db.query(LotNonServiRow.id_lot, LotNonServiRow.raison, Lot.id_destination)
+        .join(Lot, LotNonServiRow.id_lot == Lot.id_lot)
+        .filter(LotNonServiRow.id_run == id_run)
+        .all()
+    )
+
+    # Un run peut n'avoir aucune tournee et pourtant exister par ses lots non
+    # servis (cas extreme : tout abandonne). Inexistant seulement si les deux
+    # sont vides (-> 404 cote router).
+    if not tournees and not lns_rows:
         return None
 
-    # --- 1. Destinations SERVIES + vagues du run ---------------------------
-    # On parcourt les lots reellement affectes : ils donnent a la fois les
-    # destinations vertes et l'ensemble des vagues concernees par ce run.
-    dest_servies = set()      # id_destination servis (vert)
-    vagues = set()            # id_vague presents dans ce run
+    # --- 1. Destinations SERVIES (via affectations reelles) ----------------
+    dest_servies = set()
     for t in tournees:
         t.affectations.sort(key=lambda a: a.ordre_visite)
         for a in t.affectations:
             dest_servies.add(a.lot.id_destination)
-            vagues.add(a.lot.id_vague)
 
-    # --- 2. Destinations ATTENDUES de la/les vague(s) ----------------------
-    # Tous les lots partageant un id_vague du run : leurs destinations sont
-    # "attendues". Celles attendues mais non servies -> rouge (abandonnees).
-    lots_vague = (
-        db.query(Lot.id_destination)
-        .filter(Lot.id_vague.in_(vagues))
-        .distinct()
-        .all()
-    )
-    dest_attendues = {row[0] for row in lots_vague}
-    dest_abandonnees = dest_attendues - dest_servies
+    # --- 2. Destinations ABANDONNEES (fait persiste) + detail par dest -----
+    dest_abandonnees: set[int] = set()
+    non_servis_par_dest: dict[int, list[dict]] = {}
+    for id_lot, raison, id_dest in lns_rows:
+        dest_abandonnees.add(id_dest)
+        non_servis_par_dest.setdefault(id_dest, []).append(
+            {"id_lot": id_lot, "raison": raison}
+        )
 
     # --- 3. Classement couleur de TOUTES les destinations ------------------
-    # Priorite vert > rouge > gris appliquee par l'ordre des tests.
+    # Priorite ROUGE > vert > gris appliquee par l'ordre des tests.
     toutes_dest = db.query(Destination).order_by(Destination.id_destination).all()
     destinations = []
     for d in toutes_dest:
-        if d.id_destination in dest_servies:
+        if d.id_destination in dest_abandonnees:
+            statut = "abandonnee"      # rouge (prioritaire)
+        elif d.id_destination in dest_servies:
             statut = "servie"          # vert
-        elif d.id_destination in dest_abandonnees:
-            statut = "abandonnee"      # rouge
         else:
-            statut = "hors_vague"      # gris
+            statut = "hors_vague"      # gris (clef conservee ; = "autre")
         destinations.append({
             "id_destination": d.id_destination,
             "nom": d.nom,
             "gouvernorat": d.gouvernorat,
             "statut": statut,
+            "lots_non_servis": non_servis_par_dest.get(d.id_destination, []),
             **_coord(d),
         })
 
