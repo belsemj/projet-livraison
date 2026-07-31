@@ -62,12 +62,23 @@ export default function CarteView() {
             </label>
           )}
 
-          {/* Lien vers l'ecran detail du run selectionne */}
-          {idRun != null && (
-            <Link to={`/runs/${idRun}`} style={lienDetailStyle}>
-              Détail →
+          {/* Actions, poussees a droite de la barre.
+              "Saisir des lots" est l'entree principale (creer + optimiser une
+              vague) ; "Optimiser tous les lots" relance le solveur sur toute
+              la base ; "Detail" depend du run selectionne. */}
+          <div style={actionsStyle}>
+            <Link to="/saisie" style={lienSaisirStyle}>
+              + Saisir des lots
             </Link>
-          )}
+            <Link to="/lancer" style={lienLancerStyle}>
+              Optimiser tous les lots
+            </Link>
+            {idRun != null && (
+              <Link to={`/runs/${idRun}`} style={lienDetailStyle}>
+                Détail →
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
@@ -129,9 +140,39 @@ const selectStyle = {
   minWidth: 320,
 };
 
-// Lien "Detail" pousse a droite de la barre
-const lienDetailStyle = {
+// Groupe d'actions pousse a droite de la barre
+const actionsStyle = {
   marginLeft: "auto",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+// Action principale : saisir une vague de lots (vert)
+const lienSaisirStyle = {
+  textDecoration: "none",
+  background: "#2e7d32",
+  color: "white",
+  borderRadius: 6,
+  padding: "6px 12px",
+  fontFamily: "sans-serif",
+  fontSize: 13,
+};
+
+// Action secondaire : optimiser toute la base (contour)
+const lienLancerStyle = {
+  textDecoration: "none",
+  background: "white",
+  color: "#2e7d32",
+  border: "1px solid #a5d6a7",
+  borderRadius: 6,
+  padding: "6px 12px",
+  fontFamily: "sans-serif",
+  fontSize: 13,
+};
+
+// Lien "Detail" (positionnement gere par actionsStyle)
+const lienDetailStyle = {
   textDecoration: "none",
   background: "#1565c0",
   color: "white",

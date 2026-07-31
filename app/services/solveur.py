@@ -1,17 +1,27 @@
 """
-Solveur MDVRP (OR-Tools) -- S5 J2, calibre au J3, decoupe au J4.
+Solveur MDVRP (OR-Tools) -- S5 J2, calibre au J3, decoupe au J4, parts au S7.
 
 Consomme le ContexteSolveur produit par matrice_etendue.construire_contexte()
 et renvoie une solution exploitable : une tournee par vehicule, plus la liste
 des lots non servis.
 
-Perimetre : distance + capacite + disjonctions penalisees + caissons + source.
+Perimetre : distance + capacite + disjonctions penalisees + caissons + source
++ fractionnement (tout-ou-rien).
 
 Disjonctions (D28) : chaque noeud de livraison est optionnel, moyennant une
 penalite. Sans cela, la moindre insuffisance de capacite fait echouer la
 resolution en renvoyant None, sans diagnostic. Avec, le solveur livre ce
 qu'il peut et signale le reste -- comportement attendu d'un outil
 d'exploitation.
+
+Parts / fractionnement (S7) : un lot trop gros pour tout vehicule autorise de
+son depot est decoupe en PARTS par matrice_etendue (chaque part est un noeud).
+Ici, deux consequences :
+  - la restriction caisson/source s'applique a CHAQUE part (memes regles) ;
+  - le TOUT-OU-RIEN est impose en liant les ActiveVar des parts d'un meme lot :
+    soit toutes livrees, soit toutes abandonnees, jamais un demi-lot. La
+    penalite d'abandon est mutualisee sur les parts.
+Un lot non fractionne a une seule part : le comportement est identique a avant.
 
 Caissons (hypothese B) : chaque lot est restreint aux vehicules dont le
 caisson couvre son exigence. La contrainte est debrayable (caissons=False)
@@ -20,24 +30,16 @@ afin de mesurer son surcout a budget de temps egal.
 Station source (D33, S5 J4) : chaque lot n'est servable que par les vehicules
 bases a son depot d'appartenance (lot.id_station_source). Fusionnee avec la
 contrainte caisson dans le meme domaine de VehicleVar : le domaine autorise
-est l'INTERSECTION des deux conditions. Cette contrainte decoupe de facto le
-probleme en cinq sous-problemes independants -- aucune tournee ne franchit la
-frontiere entre deux depots -- sans qu'il faille cinq resolutions distinctes.
-Debrayable (source=False) pour retrouver le modele calibre au J3 et mesurer
-le surcout du decoupage.
+est l'INTERSECTION des deux conditions. Debrayable (source=False).
 
 Cout fixe par vehicule (D31) : mecanisme conserve comme parametre mais
-NEUTRALISE par defaut, la campagne de calibration ayant montre qu'il
-degrade la recherche au lieu de l'orienter. Le pilotage du nombre de
-vehicules passe par un plafond de flotte, qui est une contrainte et non
-une penalite.
+NEUTRALISE par defaut (degrade la recherche au lieu de l'orienter).
 
-Calibration (J3) : limite de temps, penalite d'abandon, cout fixe et
-strategie de recherche sont tous des parametres de resoudre(). Les valeurs
-par defaut ci-dessous sont les valeurs de production, etablies par
-scripts/calibrer.py ; les mesures correspondantes sont dans resultats/.
-A REMESURER au J4 : le decoupage par source rend chaque sous-probleme plus
-facile, la limite de 60 s est probablement trop genereuse.
+Calibration (J3, recalibree S6 J1) : limite de temps, penalite d'abandon,
+cout fixe et strategie de recherche sont des parametres de resoudre(). Les
+valeurs par defaut sont les valeurs de production. A revalider apres l'ajout
+des parts (S7), meme si l'impact est marginal : le fractionnement cible
+n'ajoute des noeuds que pour les rares lots trop gros.
 """
 
 from dataclasses import dataclass, field
@@ -58,34 +60,23 @@ from app.services.matrice_etendue import ContexteSolveur, ECHELLE
 # de donnees mais reste SOUS le plus long trajet de la matrice : elle
 # passerait par chance, pas par construction. 5 000 000 conserve un
 # facteur 6,6 de marge.
+#
+# S7 : pour un lot fractionne en k parts, cette penalite est repartie a
+# raison de penalite // k par part. Abandonner le lot (toutes parts liees)
+# coute donc ~penalite au total, pas k * penalite -- la comparaison avec le
+# cout de livraison reste calibree comme avant.
 PENALITE_ABANDON_M = 5_000_000
 
 # Cout fixe d'une sortie de vehicule, en metres (D31) -- DESACTIVE.
-#
-# Mecanisme conserve comme parametre mais neutralise par defaut. La
-# campagne cout_fixe montre qu'il degrade la recherche au lieu de la
-# guider : a nombre de vehicules constant (6 pour 200, 400, 600 et
-# 1000 km), le terme est une constante et ne devrait pas changer la
-# solution optimale ; la distance passe pourtant de 5375 a 10266 km. La
-# solution trouvee sans cout fixe reste meilleure sous tous les couts
-# testes, l'ecart croissant avec la valeur.
-#
-# Remplace par un plafond de flotte (campagne "flotte"), qui est une
-# contrainte et non une penalite.
 COUT_FIXE_VEHICULE_M = 0
 
 # 45 s. Recalibree au S6 J1 sur le probleme DECOMPOSE (contrainte de source,
 # S5 J4). Le balayage 5-60 s montre un plateau a 30 s : 4446,5 km, inchange
-# jusqu'a 60 s. En dessous, la degradation est reelle (+0,3 % a 20 s, +3,9 %
-# a 15 s, +6,7 % a 5 s). On retient 45 s -- 50 % de marge au-dessus du plateau
-# observe, pour absorber la variance du temps mural et un eventuel glissement
-# du plateau sur les donnees reelles a venir -- soit 25 % de latence gagnee
-# par rapport aux 60 s calibres au S5 J3 sur le probleme monolithique.
+# jusqu'a 60 s. On retient 45 s -- 50 % de marge au-dessus du plateau observe.
 # La borne de requete (le=120) permet d'ajuster a la hausse sans redeploiement.
 #
-# Reserve : recalibrage mesure sous uvicorn sans --reload (le reloader
-# WatchFiles ajoutait +9,9 % en pompant du CPU en tache de fond -- verifie
-# au S6 J1). A refaire si l'on passe le solveur en asynchrone.
+# Reserve : recalibrage mesure sous uvicorn sans --reload. A refaire apres
+# l'ajout des parts (S7) si le nombre de lots trop gros devient significatif.
 LIMITE_SECONDES = 45
 
 PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
@@ -94,8 +85,7 @@ METAHEURISTIQUE = "GUIDED_LOCAL_SEARCH"
 # Cout d'entree du noeud d'arrivee virtuel, rendu inatteignable au J4 (D34).
 # Doit correspondre au PROHIBITIF_KM pose dans matrice_etendue (1e9 km), une
 # fois converti en metres entiers par la matrice (x1000). Sert de seuil pour
-# exclure de la distance affichee un eventuel arc vers ce noeud -- qui ne doit
-# jamais survenir avec ends == depot de depart, mais qu'on detecte par surete.
+# exclure de la distance affichee un eventuel arc vers ce noeud.
 PROHIBITIF_M = 1e11
 
 # ---------------------------------------------------------------------------
@@ -126,7 +116,15 @@ class TourneeResultat:
     id_station_retour: int | None
     distance_m: int
     charge_echelle: int
-    lots: list[int] = field(default_factory=list)   # id_lot dans l'ordre
+    # (id_lot, quantite_echelle) dans l'ordre de visite. Un lot fractionne
+    # apparait par ses parts : une entree par part visitee. Un lot livre en
+    # entier par un seul vehicule = une entree portant tout son volume.
+    arrets: list[tuple[int, int]] = field(default_factory=list)
+
+    @property
+    def lots(self) -> list[int]:
+        """Retro-compat (resume, scripts) : id_lot dans l'ordre de visite."""
+        return [id_lot for id_lot, _ in self.arrets]
 
 
 @dataclass
@@ -138,7 +136,7 @@ class Resultat:
 
     @property
     def nb_vehicules_utilises(self) -> int:
-        return sum(1 for t in self.tournees if t.lots)
+        return sum(1 for t in self.tournees if t.arrets)
 
 
 def resoudre(ctx: ContexteSolveur,
@@ -184,28 +182,34 @@ def resoudre(ctx: ContexteSolveur,
         "Capacite",
     )
 
-    # --- restriction des vehicules autorises par lot ----------------------
-    # Caisson (hypothese B) et station source (D33) s'expriment tous deux
-    # comme une restriction du domaine de VehicleVar. On les combine dans un
-    # seul passage : le domaine autorise est l'intersection des conditions
-    # actives. Chacune est debrayable pour la mesure.
+    # --- restriction des vehicules autorises par PART ---------------------
+    # Caisson (hypothese B) et station source (D33) restreignent le domaine de
+    # VehicleVar. On les combine dans un seul passage ; la restriction d'un lot
+    # s'applique identiquement a chacune de ses parts. Chacune debrayable.
     if caissons or source:
         _restreindre_vehicules(ctx, manager, routing,
                                caissons=caissons, source=source)
 
-    # --- disjonctions : un lot peut rester non servi (D28) ----------------
+    # --- disjonctions + tout-ou-rien par lot (D28 ; parts S7) -------------
+    # Chaque PART est optionnelle (droppable) moyennant une part de penalite.
+    # Pour un lot (fractionne ou non), on lie les ActiveVar de ses parts : le
+    # solveur les sert TOUTES ou n'en sert AUCUNE -- jamais un demi-lot. La
+    # penalite d'abandon est mutualisee (penalite // k par part).
+    cp = routing.solver()
     for lot in ctx.lots:
-        routing.AddDisjunction([manager.NodeToIndex(lot.index)], penalite)
+        indices = [manager.NodeToIndex(p.index) for p in lot.parts]
+        k = len(indices)
+        part_penalite = penalite // k
+        for idx in indices:
+            routing.AddDisjunction([idx], part_penalite)
+        # tout-ou-rien : etats de service lies (une part servie <=> toutes)
+        for idx in indices[1:]:
+            cp.Add(routing.ActiveVar(idx) == routing.ActiveVar(indices[0]))
 
     # --- noeud d'arrivee virtuel rendu optionnel gratuit (D34) -------------
-    # Depuis D34, ends pointe sur les depots ; le noeud virtuel n'est plus une
-    # fin de tournee. Mais il reste present dans le modele (taille 126) avec
-    # une ligne sortante nulle : sans precaution, le solveur peut l'INSERER
-    # dans une tournee (il y entre au cout prohibitif, en sort gratuitement)
-    # et faire exploser la distance. Une disjonction a penalite NULLE l'y
-    # autorise a ne jamais le visiter sans aucun cout : le solveur le laisse
-    # donc systematiquement de cote. Sans ce garde-fou, une tournee sur deux
-    # traverse le noeud fantome. (Verifie par simulation avant integration.)
+    # Il reste present (taille du modele conservee) avec une ligne sortante
+    # nulle. Une disjonction a penalite NULLE l'autorise a ne jamais etre
+    # visite sans cout : le solveur le laisse systematiquement de cote.
     routing.AddDisjunction([manager.NodeToIndex(ctx.index_arrivee)], 0)
 
     # --- parametres de recherche -----------------------------------------
@@ -230,38 +234,28 @@ def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
                            caissons: bool = True,
                            source: bool = True) -> dict[int, list[int]]:
     """
-    Limite chaque lot aux vehicules autorises par les contraintes actives.
+    Limite chaque PART aux vehicules autorises par les contraintes actives.
 
-    Un vehicule est autorise pour un lot si TOUTES les conditions activees
-    sont satisfaites :
+    Un vehicule est autorise pour un lot (donc pour chacune de ses parts) si
+    TOUTES les conditions activees sont satisfaites :
       - caisson : couvre(v.type_caisson, lot.caisson_requis)
       - source  : v.id_station == lot.id_station_source
 
-    Le rang du vehicule (v.rang) est l'identifiant attendu par OR-Tools :
-    c'est la position dans les tableaux starts/ends passes au manager, pas
-    l'id_vehicule de la base.
+    Le rang du vehicule (v.rang) est l'identifiant attendu par OR-Tools : la
+    position dans les tableaux starts/ends, pas l'id_vehicule de la base.
 
-    Passe par VehicleVar().SetValues() plutot que par
-    SetAllowedVehiclesForIndex() : le typemap SWIG de cette derniere est
-    defaillant en ortools 9.15 (absl::Span<int const> non converti, quelle
-    que soit la forme de la sequence Python passee).
-    La valeur -1 doit figurer dans le domaine : c'est celle que prend la
-    variable quand le noeud n'est visite par aucun vehicule. L'omettre
-    rendrait la disjonction inoperante et ferait echouer la resolution sans
-    diagnostic des la premiere infaisabilite.
+    Passe par VehicleVar().SetValues() plutot que SetAllowedVehiclesForIndex()
+    (typemap SWIG defaillant en ortools 9.15). La valeur -1 doit figurer dans
+    le domaine : c'est celle prise quand le noeud n'est visite par aucun
+    vehicule ; l'omettre rendrait la disjonction inoperante.
 
-    Doit etre appele avant SolveWithParameters ; apres, sans effet.
+    Part sans vehicule autorise : domaine [-1], donc jamais visitee -> le lot
+    (toutes parts liees) est abandonne par disjonction. On NE leve PLUS
+    d'exception : controler() a deja signale ces lots ('[info]'), et un abandon
+    propre vaut mieux qu'une ValueError en plein solve dans un contexte web.
 
-    Le dictionnaire renvoye n'est pas consomme par resoudre() ; il sert au
-    diagnostic et aux tests (quels vehicules restent ouverts a quel lot).
-
-    Lot sans vehicule autorise : le noeud est contraint a -1 (jamais visite),
-    donc abandonne par disjonction. Depuis le decoupage par source (J4) ce
-    cas est courant -- un lot refrigere partant d'un depot sans vehicule
-    refrigere. On NE leve PLUS d'exception : controler() a deja signale ces
-    lots en amont ('[info]'), et un abandon propre vaut mieux qu'une
-    ValueError en pleine resolution dans un contexte web. Le domaine devient
-    simplement [-1].
+    Le dictionnaire renvoye (id_lot -> vehicules autorises) sert au diagnostic
+    et aux tests. Les parts d'un lot partagent le meme domaine autorise.
     """
     restrictions: dict[int, list[int]] = {}
 
@@ -275,53 +269,52 @@ def _restreindre_vehicules(ctx: ContexteSolveur, manager, routing,
                 continue
             autorises.append(int(v.rang))
 
-        idx = manager.NodeToIndex(lot.index)
-        # -1 toujours present : autorise l'abandon. Si autorises est vide, le
-        # domaine est [-1] et le lot est necessairement non servi.
-        routing.VehicleVar(idx).SetValues(autorises + [-1])
+        # meme domaine autorise applique a chaque part du lot
+        for p in lot.parts:
+            idx = manager.NodeToIndex(p.index)
+            routing.VehicleVar(idx).SetValues(autorises + [-1])
+
         restrictions[lot.id_lot] = autorises
 
     return restrictions
 
 
 def _extraire(ctx, manager, routing, solution) -> Resultat:
-    """Traduit la solution OR-Tools en objets metier."""
-    par_index = {l.index: l for l in ctx.lots}
-    servis: set[int] = set()
+    """Traduit la solution OR-Tools en objets metier (niveau part)."""
+    # index de part -> (lot, part)
+    part_par_index: dict[int, tuple] = {}
+    for lot in ctx.lots:
+        for p in lot.parts:
+            part_par_index[p.index] = (lot, p)
+
+    parts_servies: set[int] = set()
     tournees: list[TourneeResultat] = []
     total = 0
-
-    matrice = ctx.matrice
 
     for v in ctx.vehicules:
         index = routing.Start(v.rang)
         distance = 0
         charge = 0
-        lots_tournee: list[int] = []
+        arrets: list[tuple[int, int]] = []
 
         while not routing.IsEnd(index):
             noeud = manager.IndexToNode(index)
-            if noeud in par_index:
-                lot = par_index[noeud]
-                lots_tournee.append(lot.id_lot)
-                servis.add(lot.id_lot)
-                charge += lot.volume_echelle
+            if noeud in part_par_index:
+                lot, part = part_par_index[noeud]
+                arrets.append((lot.id_lot, part.volume_echelle))
+                parts_servies.add(part.index)
+                charge += part.volume_echelle
             suivant = solution.Value(routing.NextVar(index))
             cout_arc = routing.GetArcCostForVehicle(index, suivant, v.rang)
-            # Garde-fou D34 : le noeud virtuel est desormais inatteignable
-            # (cout d'entree prohibitif). Un arc prohibitif signalerait que le
-            # solveur l'a malgre tout emprunte -- il ne doit jamais l'etre avec
-            # start == end. On l'exclut de la somme pour ne pas faire exploser
-            # la distance affichee, ET on le signale : c'est une anomalie.
+            # Garde-fou D34 : le noeud virtuel est inatteignable. Un arc
+            # prohibitif signalerait qu'il a ete emprunte -- on l'exclut de la
+            # somme pour ne pas faire exploser la distance affichee.
             if cout_arc < PROHIBITIF_M:
                 distance += cout_arc
             index = suivant
 
-        # D34 : le vehicule termine a SON depot de depart (ends[v] =
-        # index_depart). Le retour est donc le depot de depart, point -- plus
-        # de "depot le plus proche", qui donnait des tournees partant d'un
-        # depot et rentrant dans un autre sous la contrainte de source.
-        retour = v.id_station if lots_tournee else None
+        # D34 : le vehicule termine a SON depot de depart.
+        retour = v.id_station if arrets else None
 
         total += distance
         tournees.append(
@@ -332,11 +325,16 @@ def _extraire(ctx, manager, routing, solution) -> Resultat:
                 id_station_retour=retour,
                 distance_m=distance,
                 charge_echelle=charge,
-                lots=lots_tournee,
+                arrets=arrets,
             )
         )
 
-    non_servis = [l.id_lot for l in ctx.lots if l.id_lot not in servis]
+    # Un lot est servi SSI toutes ses parts le sont. Le tout-ou-rien le
+    # garantit deja (toutes ou aucune), mais on le verifie sans le supposer.
+    non_servis = [
+        lot.id_lot for lot in ctx.lots
+        if not all(p.index in parts_servies for p in lot.parts)
+    ]
     return Resultat(tournees, non_servis, total, "resolu")
 
 
@@ -350,14 +348,14 @@ def resume(res: Resultat, ctx: ContexteSolveur) -> str:
         "",
     ]
     for t in res.tournees:
-        if not t.lots:
+        if not t.arrets:
             lignes.append(f"  veh {t.id_vehicule:2d}  (inutilise)")
             continue
         veh = next(v for v in ctx.vehicules if v.id_vehicule == t.id_vehicule)
         taux = 100 * t.charge_echelle / veh.capacite_echelle
         lignes.append(
             f"  veh {t.id_vehicule:2d}  station {t.id_station_depart} -> "
-            f"{t.id_station_retour}  {len(t.lots):3d} lots  "
+            f"{t.id_station_retour}  {len(t.arrets):3d} arrets  "
             f"{t.distance_m/1000:7.1f} km  charge {t.charge_echelle/ECHELLE:6.2f}"
             f" ({taux:5.1f} %)"
         )

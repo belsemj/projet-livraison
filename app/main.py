@@ -1,7 +1,7 @@
 from app.routers import run
 from app.routers import (
     station, destination, lot, chauffeur, vehicule,
-    tournee, affectation, distances, optimisation,
+    tournee, affectation, distances, optimisation, vague,
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +33,7 @@ app.include_router(tournee.router)
 app.include_router(affectation.router)
 app.include_router(distances.router)
 app.include_router(optimisation.router)
+app.include_router(vague.router)
 app.include_router(run.router)
 
 

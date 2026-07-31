@@ -1,14 +1,19 @@
 """
-Persistance d'un run d'optimisation (S6 J1).
+Persistance d'un run d'optimisation (S6 J1 ; parts S7).
 
 Traduit un Resultat de solveur en lignes `tournee` et `affectation`, sous un
-id_run donne. Deux ecarts entre le resultat solveur et le schema y sont
-resorbes ici, sans toucher au solveur (principe schema vs solveur) :
+id_run donne. Un ecart entre le resultat solveur et le schema est resorbe ici,
+sans toucher au solveur (principe schema vs solveur) :
 
   - id_chauffeur : NOT NULL sur `tournee`, absent du resultat (qui ne porte
     que id_vehicule). Resolu par une lecture {id_vehicule -> id_chauffeur}.
-  - quantite : le modele place UN noeud par lot (pas de fractionnement
-    effectif), donc chaque affectation porte le volume entier du lot en m3.
+
+S7 -- fractionnement effectif : le solveur produit desormais des ARRETS
+(id_lot, quantite_echelle), une entree par part livree. Un lot fractionne
+apparait donc dans plusieurs tournees, chacune portant SA quantite. On ecrit
+une affectation par arret, avec la quantite de la part (en m3). Le
+tout-ou-rien garantit qu'un lot persiste est toujours livre en entier : la
+somme des quantites de ses affectations vaut son volume.
 
 Seules les tournees NON VIDES sont persistees : un vehicule inutilise renvoie
 id_station_retour=None (or la colonne est NOT NULL) et n'a pas de sens metier.
@@ -21,7 +26,7 @@ from sqlalchemy import func
 from app.models.tournee import Tournee
 from app.models.affectation import Affectation
 from app.models.vehicule import Vehicule
-from app.models.lot import Lot
+from app.services.matrice_etendue import ECHELLE
 
 
 def prochain_id_run(db) -> int:
@@ -32,7 +37,7 @@ def prochain_id_run(db) -> int:
 
 def persister(db, res, ctx, id_run: int) -> None:
     """Ecrit les tournees non vides et leurs affectations pour `id_run`."""
-    tournees_pleines = [t for t in res.tournees if t.lots]
+    tournees_pleines = [t for t in res.tournees if t.arrets]
 
     # id_vehicule -> id_chauffeur (une lecture pour toute la flotte utilisee).
     # id_chauffeur est garanti non nul : charger_flotte l'exige (D23).
@@ -42,12 +47,6 @@ def persister(db, res, ctx, id_run: int) -> None:
         .filter(Vehicule.id_vehicule.in_(ids_veh))
         .all()
     )
-
-    # volume reel (m3) de chaque lot servi, pour affectation.quantite.
-    ids_lot = [id_lot for t in tournees_pleines for id_lot in t.lots]
-    volume_par_lot = dict(
-        db.query(Lot.id_lot, Lot.volume).filter(Lot.id_lot.in_(ids_lot)).all()
-    ) if ids_lot else {}
 
     for t in tournees_pleines:
         tournee = Tournee(
@@ -62,10 +61,11 @@ def persister(db, res, ctx, id_run: int) -> None:
         db.add(tournee)
         db.flush()   # affecte tournee.id_tournee avant les affectations
 
-        for ordre, id_lot in enumerate(t.lots, start=1):
+        # Une affectation par arret (part). quantite = volume de la part, en m3.
+        for ordre, (id_lot, quantite_echelle) in enumerate(t.arrets, start=1):
             db.add(Affectation(
                 ordre_visite=ordre,
-                quantite=round(float(volume_par_lot[id_lot]), 2),
+                quantite=round(quantite_echelle / ECHELLE, 2),
                 id_tournee=tournee.id_tournee,
                 id_lot=id_lot,
             ))

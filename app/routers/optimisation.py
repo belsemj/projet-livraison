@@ -1,10 +1,11 @@
 """
-Lancement du solveur et persistance du resultat (S6 J1).
+Lancement du solveur et persistance du resultat (S6 J1 ; vague S7).
 
 POST /optimisations : construit le contexte a partir de l'etat courant de la
-base, execute le solveur MDVRP en synchrone, persiste les tournees non vides
-et leurs affectations sous un nouvel id_run, et renvoie un resume. Le detail
-imbrique (tournees + affectations) est du ressort de GET /runs/{id_run} (J2).
+base (eventuellement restreint a une vague de lots), execute le solveur MDVRP
+en synchrone, persiste les tournees non vides et leurs affectations sous un
+nouvel id_run, et renvoie un resume. Le detail imbrique (tournees +
+affectations) est du ressort de GET /runs/{id_run} (J2).
 
 Seule ecriture cote optimisation. Aucune logique metier n'est ajoutee ici :
 on orchestre lecture des donnees, appel au solveur, ecriture du resultat.
@@ -35,13 +36,15 @@ def lancer_optimisation(
     Execute le solveur sur l'etat courant de la base et persiste le resultat.
 
     - 201 : run cree ; resume renvoye (id_run, distances, lots servis).
-    - 422 : donnees insuffisantes (aucun lot, ou flotte mobilisable vide).
+    - 422 : donnees insuffisantes (aucun lot dans la portee, ou flotte vide).
     - 409 : anomalies bloquantes dans les donnees (a corriger avant d'optimiser).
     - 500 : echec du solveur, ou echec de la persistance.
     """
-    # 1. Contexte -- une seule lecture de la base.
+    id_vague = requete.id_vague if requete else None
+
+    # 1. Contexte -- une seule lecture de la base, restreinte a la vague si fournie.
     try:
-        ctx = construire_contexte(db)
+        ctx = construire_contexte(db, id_vague=id_vague)
     except ValueError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
@@ -58,7 +61,10 @@ def lancer_optimisation(
                     "anomalies": bloquantes},
         )
 
-    # 3. Resolution synchrone. limite_secondes optionnel ; defaut 60 s (S5).
+    # 3. Resolution synchrone. limite_secondes optionnel ;
+    #    defaut = solveur.LIMITE_SECONDES (45 s, recalibre S6 J1 sur le probleme
+    #    decompose) ; borne haute 120 s cote requete via
+    #    OptimisationRequete.limite_secondes, ajustable sans redeploiement.
     limite = (requete.limite_secondes if requete else None) or solveur.LIMITE_SECONDES
     res = solveur.resoudre(ctx, limite_secondes=limite)
     if res.statut != "resolu":

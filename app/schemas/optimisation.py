@@ -1,8 +1,8 @@
 """
-Schemas de l'endpoint POST /optimisations (S6 J1).
+Schemas de l'endpoint POST /optimisations (S6 J1 ; id_vague S7).
 
-Requete : parametres optionnels de lancement (seul le budget temps est
-expose ; le reste des reglages du solveur est fige par la calibration S5).
+Requete : parametres optionnels de lancement (budget temps + vague ciblee ;
+le reste des reglages du solveur est fige par la calibration S5).
 Reponse : resume du run, volontairement leger. Le detail imbrique (tournees
 + affectations) releve de GET /runs/{id_run}, cote lecture.
 """
@@ -16,7 +16,13 @@ class OptimisationRequete(BaseModel):
     limite_secondes: Optional[int] = Field(
         default=None, ge=1, le=120,
         description="Budget de recherche du solveur, en secondes. "
-                    "Defaut : 60 (valeur de production calibree en S5).",
+                    "Defaut : 45 (valeur de production recalibree en S6 J1 "
+                    "sur le probleme decompose).",
+    )
+    id_vague: Optional[str] = Field(
+        default=None,
+        description="Restreint l'optimisation aux lots de cette vague. "
+                    "Absent (None) : optimise tous les lots de la base.",
     )
 
 
