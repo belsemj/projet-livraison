@@ -20,38 +20,61 @@ export default function SaisieLots() {
   // Referentiels fixes (base) pour les listes deroulantes
   const [stations, setStations] = useState([]);
   const [destinations, setDestinations] = useState([]);
+  const [vehicules, setVehicules] = useState([]);
+  const [chauffeurs, setChauffeurs] = useState([]);
   const [refErreur, setRefErreur] = useState(null);
 
   const [lignes, setLignes] = useState([ligneVide()]);
   const [nombre, setNombre] = useState(1);
 
+  // Vue courante : saisie (Phase 1 + point d'entree manuel) ou affectation (Phase 2)
+  const [vue, setVue] = useState("saisie"); // saisie | affectation
+
   const [etat, setEtat] = useState("pret"); // pret | encours | ok | erreur
   const [phase, setPhase] = useState(""); // libelle d'etape pendant "encours"
-  const [resultat, setResultat] = useState(null); // { ...run, id_vague, total }
+  const [resultat, setResultat] = useState(null); // resultat AUTO : { ...run, id_vague, total }
   const [erreur, setErreur] = useState(null); // { texte, details? }
   const [secondes, setSecondes] = useState(0);
   const chronoRef = useRef(null);
 
+  // Mode manuel : vague persistee + affectation lot -> couple
+  const [idVague, setIdVague] = useState(null);
+  // affect : [{ id_lot, volume, caisson_requis, id_station_source, id_destination,
+  //             id_vehicule: number|"", id_chauffeur: number|"" }]
+  const [affect, setAffect] = useState([]);
+  const [evaluation, setEvaluation] = useState(null); // resultat MANUEL : EvaluationResultat
+
   // --- Charger les referentiels au montage ---
+  // Chargements DECOUPLES (allSettled) : un endpoint en panne ne doit pas vider
+  // les autres. Chaque echec est nomme precisement dans refErreur.
   useEffect(() => {
-    Promise.all([
-      fetch(`${API_URL}/stations/`).then((r) => {
-        if (!r.ok) throw new Error(`stations : HTTP ${r.status}`);
-        return r.json();
-      }),
-      fetch(`${API_URL}/destinations/?limit=1000`).then((r) => {
-        if (!r.ok) throw new Error(`destinations : HTTP ${r.status}`);
-        return r.json();
-      }),
-    ])
-      .then(([st, de]) => {
-        setStations(st);
-        setDestinations(de);
-      })
-      .catch((e) => setRefErreur(e.message));
+    const charger = async (chemin, label) => {
+      const r = await fetch(`${API_URL}${chemin}`);
+      if (!r.ok) throw new Error(`${label} : HTTP ${r.status}`);
+      return r.json();
+    };
+
+    const sources = [
+      ["/stations/", "stations", setStations],
+      ["/destinations/?limit=1000", "destinations", setDestinations],
+      ["/vehicules/?limit=1000", "vehicules", setVehicules],
+      ["/chauffeurs/?limit=1000", "chauffeurs", setChauffeurs],
+    ];
+
+    Promise.allSettled(
+      sources.map(([chemin, label]) => charger(chemin, label))
+    ).then((res) => {
+      const echecs = [];
+      res.forEach((r, i) => {
+        const [, label, set] = sources[i];
+        if (r.status === "fulfilled") set(r.value);
+        else echecs.push(`${label} (${r.reason?.message ?? "injoignable"})`);
+      });
+      setRefErreur(echecs.length ? echecs.join(" ; ") : null);
+    });
   }, []);
 
-  // --- Chrono d'attente pendant l'optimisation ---
+  // --- Chrono d'attente pendant les appels serveur ---
   useEffect(() => {
     if (etat === "encours") {
       setSecondes(0);
@@ -62,7 +85,7 @@ export default function SaisieLots() {
     return () => clearInterval(chronoRef.current);
   }, [etat]);
 
-  // --- Edition des lignes ---
+  // --- Edition des lignes (saisie) ---
   const majLigne = (i, champ, valeur) =>
     setLignes((prec) =>
       prec.map((l, k) => (k === i ? { ...l, [champ]: valeur } : l))
@@ -86,7 +109,38 @@ export default function SaisieLots() {
     return null;
   }
 
-  // --- Auto : creer la vague puis l'optimiser ---
+  // Construit la charge utile "lots" a partir des lignes saisies.
+  const construireLots = () =>
+    lignes.map((l) => ({
+      volume: Number(l.volume),
+      caisson_requis: l.caisson_requis,
+      id_station_source: Number(l.id_station_source),
+      id_destination: Number(l.id_destination),
+    }));
+
+  // --- Helpers d'affichage (petits referentiels : find suffit) ---
+  const nomStation = (id) =>
+    stations.find((s) => s.id_station === id)?.nom ?? `dépôt ${id}`;
+  const nomChauffeur = (id) =>
+    chauffeurs.find((c) => c.id_chauffeur === id)?.nom ?? `chauffeur ${id}`;
+  const nomDestination = (id) =>
+    destinations.find((d) => d.id_destination === id)?.nom ?? `dest. ${id}`;
+  const vehiculeById = (id) => vehicules.find((v) => v.id_vehicule === id);
+  const destinationDuLot = (idLot) =>
+    affect.find((r) => r.id_lot === idLot)?.id_destination;
+
+  // Vehicules proposables : ecartes hors_service et sans binome (couple impossible).
+  // On garde les "reserve" : le mode manuel sert justement a tester des scenarios.
+  const vehiculesAffectables = vehicules
+    .filter((v) => v.statut !== "hors_service" && v.id_chauffeur != null)
+    .slice()
+    .sort((a, b) => a.id_vehicule - b.id_vehicule);
+
+  const libelleVehicule = (v) =>
+    `V${v.id_vehicule} · ${v.type_caisson} · ${v.capacite} m³ · ` +
+    `${nomStation(v.id_station)} · ${nomChauffeur(v.id_chauffeur)}`;
+
+  // --- Auto (Phase 1) : creer la vague puis l'optimiser ---
   async function optimiser() {
     const probleme = validerLignes();
     if (probleme) {
@@ -98,16 +152,11 @@ export default function SaisieLots() {
     setEtat("encours");
     setErreur(null);
     setResultat(null);
+    setEvaluation(null);
 
     const controleur = new AbortController();
     const minuteur = setTimeout(() => controleur.abort(), TIMEOUT_MS);
-
-    const lots = lignes.map((l) => ({
-      volume: Number(l.volume),
-      caisson_requis: l.caisson_requis,
-      id_station_source: Number(l.id_station_source),
-      id_destination: Number(l.id_destination),
-    }));
+    const lots = construireLots();
 
     try {
       // 1. Persister la vague
@@ -156,159 +205,471 @@ export default function SaisieLots() {
     }
   }
 
+  // --- Manuel (Phase 2, etape 1) : persister la vague puis passer en affectation ---
+  // Les lots n'ont d'id qu'apres persistance : on cree la vague, on apparie les
+  // id_lots renvoyes (memes ordre que les lignes) et on bascule de vue.
+  async function preparerAffectation() {
+    const probleme = validerLignes();
+    if (probleme) {
+      setErreur({ texte: probleme });
+      setEtat("erreur");
+      return;
+    }
+
+    setEtat("encours");
+    setPhase("Enregistrement de la vague…");
+    setErreur(null);
+    setResultat(null);
+    setEvaluation(null);
+
+    const controleur = new AbortController();
+    const minuteur = setTimeout(() => controleur.abort(), TIMEOUT_MS);
+    const lots = construireLots();
+
+    try {
+      const rv = await fetch(`${API_URL}/vagues`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lots }),
+        signal: controleur.signal,
+      });
+      const corpsV = await rv.json().catch(() => null);
+      if (!rv.ok) {
+        setErreur(messageErreur(rv.status, corpsV));
+        setEtat("erreur");
+        return;
+      }
+      const { id_vague, id_lots } = corpsV;
+
+      // Appariement par index : id_lots suit l'ordre des lignes saisies.
+      const rangs = lignes.map((l, i) => ({
+        id_lot: id_lots[i],
+        volume: Number(l.volume),
+        caisson_requis: l.caisson_requis,
+        id_station_source: Number(l.id_station_source),
+        id_destination: Number(l.id_destination),
+        id_vehicule: "",
+        id_chauffeur: "",
+      }));
+
+      setIdVague(id_vague);
+      setAffect(rangs);
+      setVue("affectation");
+      setEtat("pret");
+      setPhase("");
+    } catch (e) {
+      setErreur({
+        texte:
+          e.name === "AbortError"
+            ? `Délai dépassé (> ${TIMEOUT_MS / 1000} s) : le serveur n'a pas répondu.`
+            : `Échec réseau : ${e.message}`,
+      });
+      setEtat("erreur");
+    } finally {
+      clearTimeout(minuteur);
+    }
+  }
+
+  // Choix vehicule : le chauffeur est pre-rempli avec le binome (D12), modifiable.
+  const majAffectVehicule = (i, val) =>
+    setAffect((prec) =>
+      prec.map((r, k) => {
+        if (k !== i) return r;
+        if (val === "") return { ...r, id_vehicule: "", id_chauffeur: "" };
+        const idv = Number(val);
+        const v = vehiculeById(idv);
+        return { ...r, id_vehicule: idv, id_chauffeur: v?.id_chauffeur ?? "" };
+      })
+    );
+
+  // Remplacement manuel du chauffeur du couple.
+  const majAffectChauffeur = (i, val) =>
+    setAffect((prec) =>
+      prec.map((r, k) =>
+        k === i ? { ...r, id_chauffeur: val === "" ? "" : Number(val) } : r
+      )
+    );
+
+  // Retour a la saisie. La vague deja persistee reste en base (orpheline,
+  // sans run) ; nettoyable via scripts/supprimer_lots_test.py au besoin.
+  const retourSaisie = () => {
+    setVue("saisie");
+    setIdVague(null);
+    setAffect([]);
+    setEvaluation(null);
+    setErreur(null);
+    setEtat("pret");
+    setPhase("");
+  };
+
+  // --- Manuel (Phase 2, etape 2) : regrouper par couple et evaluer ---
+  async function evaluer() {
+    const assignes = affect.filter(
+      (r) => r.id_vehicule !== "" && r.id_chauffeur !== ""
+    );
+    if (assignes.length === 0) {
+      setErreur({ texte: "Affecte au moins un lot à un véhicule avant d'évaluer." });
+      setEtat("erreur");
+      return;
+    }
+
+    // Regroupement client : un couple (vehicule, chauffeur) distinct = une tournee.
+    const groupes = new Map();
+    for (const r of assignes) {
+      const cle = `${r.id_vehicule}|${r.id_chauffeur}`;
+      if (!groupes.has(cle)) {
+        groupes.set(cle, {
+          id_vehicule: r.id_vehicule,
+          id_chauffeur: r.id_chauffeur,
+          ids_lots: [],
+        });
+      }
+      groupes.get(cle).ids_lots.push(r.id_lot);
+    }
+    const affectations = [...groupes.values()];
+
+    setEtat("encours");
+    setPhase("Évaluation…");
+    setErreur(null);
+    setEvaluation(null);
+
+    const controleur = new AbortController();
+    const minuteur = setTimeout(() => controleur.abort(), TIMEOUT_MS);
+
+    try {
+      const re = await fetch(`${API_URL}/evaluations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_vague: idVague, affectations }),
+        signal: controleur.signal,
+      });
+      const corps = await re.json().catch(() => null);
+      if (!re.ok) {
+        setErreur(messageErreur(re.status, corps));
+        setEtat("erreur");
+        return;
+      }
+      setEvaluation(corps);
+      setEtat("ok");
+    } catch (e) {
+      setErreur({
+        texte:
+          e.name === "AbortError"
+            ? `Délai dépassé (> ${TIMEOUT_MS / 1000} s) : le serveur n'a pas répondu.`
+            : `Échec réseau : ${e.message}`,
+      });
+      setEtat("erreur");
+    } finally {
+      clearTimeout(minuteur);
+    }
+  }
+
   const occupe = etat === "encours";
+  const nbAffectes = affect.filter((r) => r.id_vehicule !== "").length;
 
   return (
     <div style={pageStyle}>
       <div style={barreStyle}>
         <Link to="/" style={lienRetourStyle}>← Carte</Link>
-        <span style={titreStyle}>Saisir des lots à livrer</span>
+        <span style={titreStyle}>
+          {vue === "saisie" ? "Saisir des lots à livrer" : "Affectation manuelle"}
+        </span>
       </div>
 
       <div style={corpsStyle}>
-        <p style={introStyle}>
-          Renseigne les lots d'une nouvelle vague. Les dépôts et destinations
-          sont ceux de la base (listes déroulantes). Le solveur optimisera cette
-          vague uniquement, sans toucher aux données existantes.
-        </p>
-
         {refErreur && (
           <p style={{ color: "#c62828" }}>
             Impossible de charger les référentiels : {refErreur}
           </p>
         )}
 
-        {/* Generateur de lignes */}
-        <div style={genStyle}>
-          <label>
-            Nombre de lots :{" "}
-            <input
-              type="number"
-              min={1}
-              max={200}
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              style={champNombreStyle}
-              disabled={occupe}
-            />
-          </label>
-          <button type="button" onClick={genererLignes} style={boutonSecondaireStyle} disabled={occupe}>
-            Générer les lignes
-          </button>
-        </div>
+        {/* ============================ VUE SAISIE ============================ */}
+        {vue === "saisie" && (
+          <>
+            <p style={introStyle}>
+              Renseigne les lots d'une nouvelle vague. Les dépôts et destinations
+              sont ceux de la base (listes déroulantes). « Optimiser » lance le
+              solveur ; « Affectation manuelle » te laisse composer les tournées.
+            </p>
 
-        {/* Tableau de saisie */}
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>#</th>
-              <th style={thStyle}>Volume (m³)</th>
-              <th style={thStyle}>Caisson</th>
-              <th style={thStyle}>Dépôt source</th>
-              <th style={thStyle}>Destination</th>
-              <th style={thStyle}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {lignes.map((l, i) => (
-              <tr key={i}>
-                <td style={tdStyle}>{i + 1}</td>
-                <td style={tdStyle}>
-                  <input
-                    type="number"
-                    min={0.01}
-                    step={0.01}
-                    value={l.volume}
-                    onChange={(e) => majLigne(i, "volume", e.target.value)}
-                    style={champVolumeStyle}
-                    disabled={occupe}
-                  />
-                </td>
-                <td style={tdStyle}>
-                  <select
-                    value={l.caisson_requis}
-                    onChange={(e) => majLigne(i, "caisson_requis", e.target.value)}
-                    style={selectStyle}
-                    disabled={occupe}
-                  >
-                    {CAISSONS.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </td>
-                <td style={tdStyle}>
-                  <select
-                    value={l.id_station_source}
-                    onChange={(e) => majLigne(i, "id_station_source", e.target.value)}
-                    style={selectStyle}
-                    disabled={occupe}
-                  >
-                    <option value="">— choisir —</option>
-                    {stations.map((s) => (
-                      <option key={s.id_station} value={s.id_station}>
-                        {s.nom} ({s.gouvernorat})
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td style={tdStyle}>
-                  <select
-                    value={l.id_destination}
-                    onChange={(e) => majLigne(i, "id_destination", e.target.value)}
-                    style={selectStyle}
-                    disabled={occupe}
-                  >
-                    <option value="">— choisir —</option>
-                    {destinations.map((d) => (
-                      <option key={d.id_destination} value={d.id_destination}>
-                        {d.nom} ({d.gouvernorat})
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td style={tdStyle}>
-                  <button
-                    type="button"
-                    onClick={() => retirerLigne(i)}
-                    style={boutonRetirerStyle}
-                    disabled={occupe || lignes.length === 1}
-                    title="Retirer ce lot"
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            {/* Generateur de lignes */}
+            <div style={genStyle}>
+              <label>
+                Nombre de lots :{" "}
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  style={champNombreStyle}
+                  disabled={occupe}
+                />
+              </label>
+              <button type="button" onClick={genererLignes} style={boutonSecondaireStyle} disabled={occupe}>
+                Générer les lignes
+              </button>
+            </div>
 
-        <button type="button" onClick={ajouterLigne} style={boutonSecondaireStyle} disabled={occupe}>
-          + Ajouter un lot
-        </button>
+            {/* Tableau de saisie */}
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>#</th>
+                  <th style={thStyle}>Volume (m³)</th>
+                  <th style={thStyle}>Caisson</th>
+                  <th style={thStyle}>Dépôt source</th>
+                  <th style={thStyle}>Destination</th>
+                  <th style={thStyle}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lignes.map((l, i) => (
+                  <tr key={i}>
+                    <td style={tdStyle}>{i + 1}</td>
+                    <td style={tdStyle}>
+                      <input
+                        type="number"
+                        min={0.01}
+                        step={0.01}
+                        value={l.volume}
+                        onChange={(e) => majLigne(i, "volume", e.target.value)}
+                        style={champVolumeStyle}
+                        disabled={occupe}
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <select
+                        value={l.caisson_requis}
+                        onChange={(e) => majLigne(i, "caisson_requis", e.target.value)}
+                        style={selectStyle}
+                        disabled={occupe}
+                      >
+                        {CAISSONS.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <select
+                        value={l.id_station_source}
+                        onChange={(e) => majLigne(i, "id_station_source", e.target.value)}
+                        style={selectStyle}
+                        disabled={occupe}
+                      >
+                        <option value="">— choisir —</option>
+                        {stations.map((s) => (
+                          <option key={s.id_station} value={s.id_station}>
+                            {s.nom} ({s.gouvernorat})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <select
+                        value={l.id_destination}
+                        onChange={(e) => majLigne(i, "id_destination", e.target.value)}
+                        style={selectStyle}
+                        disabled={occupe}
+                      >
+                        <option value="">— choisir —</option>
+                        {destinations.map((d) => (
+                          <option key={d.id_destination} value={d.id_destination}>
+                            {d.nom} ({d.gouvernorat})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <button
+                        type="button"
+                        onClick={() => retirerLigne(i)}
+                        style={boutonRetirerStyle}
+                        disabled={occupe || lignes.length === 1}
+                        title="Retirer ce lot"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-        {/* Actions : auto (Phase 1) et manuel (Phase 2, a venir) */}
-        <div style={actionsStyle}>
-          <button
-            type="button"
-            onClick={optimiser}
-            disabled={occupe}
-            style={occupe ? boutonOccupeStyle : boutonPrincipalStyle}
-          >
-            {occupe ? `${phase} ${secondes} s` : "Optimiser automatiquement"}
-          </button>
+            <button type="button" onClick={ajouterLigne} style={boutonSecondaireStyle} disabled={occupe}>
+              + Ajouter un lot
+            </button>
 
-          <button
-            type="button"
-            disabled
-            style={boutonDesactiveStyle}
-            title="Affectation manuelle : disponible en Phase 2"
-          >
-            Affectation manuelle (à venir)
-          </button>
-        </div>
+            {/* Actions : auto (Phase 1) et manuel (Phase 2) */}
+            <div style={actionsStyle}>
+              <button
+                type="button"
+                onClick={optimiser}
+                disabled={occupe}
+                style={occupe ? boutonOccupeStyle : boutonPrincipalStyle}
+              >
+                {occupe ? `${phase} ${secondes} s` : "Optimiser automatiquement"}
+              </button>
 
-        {etat === "erreur" && erreur && <BlocErreur erreur={erreur} />}
-        {etat === "ok" && resultat && <BlocResultat resultat={resultat} />}
+              <button
+                type="button"
+                onClick={preparerAffectation}
+                disabled={occupe}
+                style={occupe ? boutonOccupeStyle : boutonManuelStyle}
+                title="Composer les tournées à la main puis évaluer"
+              >
+                Affectation manuelle
+              </button>
+            </div>
+
+            {etat === "erreur" && erreur && <BlocErreur erreur={erreur} />}
+            {etat === "ok" && resultat && <BlocResultat resultat={resultat} />}
+          </>
+        )}
+
+        {/* ========================= VUE AFFECTATION ========================= */}
+        {vue === "affectation" && (
+          <>
+            <p style={introStyle}>
+              Vague <strong>{idVague}</strong> enregistrée ({affect.length} lots).
+              Affecte chaque lot à un véhicule ; le chauffeur est celui du binôme,
+              modifiable. Les lots laissés « non affecté » remonteront comme non
+              livrés. L'évaluation contrôle les violations sans les bloquer et
+              réordonne chaque tournée (TSP).
+            </p>
+
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>#</th>
+                  <th style={thStyle}>Volume (m³)</th>
+                  <th style={thStyle}>Caisson</th>
+                  <th style={thStyle}>Dépôt</th>
+                  <th style={thStyle}>Destination</th>
+                  <th style={thStyle}>Véhicule</th>
+                  <th style={thStyle}>Chauffeur</th>
+                </tr>
+              </thead>
+              <tbody>
+                {affect.map((r, i) => (
+                  <tr key={r.id_lot}>
+                    <td style={tdStyle}>{i + 1}</td>
+                    <td style={tdStyle}>{r.volume}</td>
+                    <td style={tdStyle}>{r.caisson_requis}</td>
+                    <td style={tdStyle}>{nomStation(r.id_station_source)}</td>
+                    <td style={tdStyle}>{nomDestination(r.id_destination)}</td>
+                    <td style={tdStyle}>
+                      <select
+                        value={r.id_vehicule}
+                        onChange={(e) => majAffectVehicule(i, e.target.value)}
+                        style={selectStyle}
+                        disabled={occupe}
+                      >
+                        <option value="">— non affecté —</option>
+                        {vehiculesAffectables.map((v) => (
+                          <option key={v.id_vehicule} value={v.id_vehicule}>
+                            {libelleVehicule(v)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <select
+                        value={r.id_chauffeur}
+                        onChange={(e) => majAffectChauffeur(i, e.target.value)}
+                        style={selectStyle}
+                        disabled={occupe || r.id_vehicule === ""}
+                      >
+                        {r.id_vehicule === "" ? (
+                          <option value="">—</option>
+                        ) : (
+                          chauffeurs.map((c) => (
+                            <option key={c.id_chauffeur} value={c.id_chauffeur}>
+                              {c.nom}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={actionsStyle}>
+              <button
+                type="button"
+                onClick={retourSaisie}
+                style={boutonSecondaireStyle}
+                disabled={occupe}
+              >
+                ← Retour saisie
+              </button>
+              <button
+                type="button"
+                onClick={evaluer}
+                disabled={occupe || nbAffectes === 0}
+                style={
+                  occupe
+                    ? boutonOccupeStyle
+                    : nbAffectes === 0
+                    ? boutonDesactiveStyle
+                    : boutonPrincipalStyle
+                }
+              >
+                {occupe ? `${phase} ${secondes} s` : `Évaluer (${nbAffectes} affectés)`}
+              </button>
+            </div>
+
+            {etat === "erreur" && erreur && <BlocErreur erreur={erreur} />}
+
+            {etat === "ok" && evaluation && (
+              <div style={{ marginTop: 24 }}>
+                <p style={succesStyle}>✓ Évaluation de la vague {idVague}.</p>
+
+                <div style={resumeStyle}>
+                  <span><strong>{evaluation.nb_tournees}</strong> tournées</span>
+                  <span><strong>{evaluation.distance_totale_km}</strong> km au total</span>
+                  <span><strong>{evaluation.nb_violations}</strong> violation(s)</span>
+                  <span>
+                    <strong>{evaluation.lots_non_affectes.length}</strong> lot(s) non affecté(s)
+                  </span>
+                </div>
+
+                {evaluation.lots_non_affectes.length > 0 && (
+                  <p style={{ fontSize: 13, color: "#555", marginTop: 12 }}>
+                    Lots non affectés : {evaluation.lots_non_affectes.join(", ")}
+                  </p>
+                )}
+
+                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {evaluation.tournees.map((t, i) => (
+                    <div key={i} style={carteTourneeStyle}>
+                      <div style={{ fontWeight: "bold", marginBottom: 6 }}>
+                        V{t.id_vehicule} · {nomChauffeur(t.id_chauffeur)} · départ {nomStation(t.id_station_depart)}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>
+                        {t.distance_km} km · charge {t.charge_m3}/{t.capacite_m3} m³ · {t.taux_charge} %
+                      </div>
+                      <div style={{ fontSize: 13, marginBottom: t.violations.length ? 6 : 0 }}>
+                        Ordre : {t.ordre_lots
+                          .map((idLot) => nomDestination(destinationDuLot(idLot)))
+                          .join(" → ")}
+                      </div>
+                      {t.violations.length > 0 && (
+                        <ul style={{ margin: "4px 0 0", paddingLeft: 20, color: "#c62828", fontSize: 13 }}>
+                          {t.violations.map((v, k) => (
+                            <li key={k}>[{v.type}] {v.message}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -331,7 +692,7 @@ function messageErreur(status, corps) {
   if (status === 409 && detail && typeof detail === "object") {
     return { texte: detail.message ?? "Données à corriger.", details: detail.anomalies ?? [] };
   }
-  // 422 / 500 : detail = chaine
+  // 422 / 500 : detail = chaine (ex. evaluation : vehicule ou lot introuvable)
   if (typeof detail === "string") return { texte: detail };
   return { texte: `Erreur HTTP ${status}.` };
 }
@@ -451,6 +812,16 @@ const boutonPrincipalStyle = {
   cursor: "pointer",
   fontFamily: "sans-serif",
 };
+const boutonManuelStyle = {
+  background: "#1565c0",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "10px 20px",
+  fontSize: 15,
+  cursor: "pointer",
+  fontFamily: "sans-serif",
+};
 const boutonOccupeStyle = { ...boutonPrincipalStyle, background: "#9e9e9e", cursor: "default" };
 const boutonDesactiveStyle = {
   background: "#eee",
@@ -492,6 +863,12 @@ const resumeStyle = {
   border: "1px solid #cfe0f3",
   borderRadius: 8,
   fontSize: 14,
+};
+const carteTourneeStyle = {
+  padding: "10px 14px",
+  background: "#fafafa",
+  border: "1px solid #e0e0e0",
+  borderRadius: 8,
 };
 const boiteInfoStyle = {
   marginTop: 12,
