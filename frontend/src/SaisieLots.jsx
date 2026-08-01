@@ -43,6 +43,7 @@ export default function SaisieLots() {
   //             id_vehicule: number|"", id_chauffeur: number|"" }]
   const [affect, setAffect] = useState([]);
   const [evaluation, setEvaluation] = useState(null); // resultat MANUEL : EvaluationResultat
+  const [evalPerimee, setEvalPerimee] = useState(false); // affectation modifiee depuis la derniere eval
 
   // --- Charger les referentiels au montage ---
   // Chargements DECOUPLES (allSettled) : un endpoint en panne ne doit pas vider
@@ -271,7 +272,8 @@ export default function SaisieLots() {
   }
 
   // Choix vehicule : le chauffeur est pre-rempli avec le binome (D12), modifiable.
-  const majAffectVehicule = (i, val) =>
+  const majAffectVehicule = (i, val) => {
+    setEvalPerimee(true);
     setAffect((prec) =>
       prec.map((r, k) => {
         if (k !== i) return r;
@@ -281,14 +283,17 @@ export default function SaisieLots() {
         return { ...r, id_vehicule: idv, id_chauffeur: v?.id_chauffeur ?? "" };
       })
     );
+  };
 
   // Remplacement manuel du chauffeur du couple.
-  const majAffectChauffeur = (i, val) =>
+  const majAffectChauffeur = (i, val) => {
+    setEvalPerimee(true);
     setAffect((prec) =>
       prec.map((r, k) =>
         k === i ? { ...r, id_chauffeur: val === "" ? "" : Number(val) } : r
       )
     );
+  };
 
   // Retour a la saisie. La vague deja persistee reste en base (orpheline,
   // sans run) ; nettoyable via scripts/supprimer_lots_test.py au besoin.
@@ -297,6 +302,7 @@ export default function SaisieLots() {
     setIdVague(null);
     setAffect([]);
     setEvaluation(null);
+    setEvalPerimee(false);
     setErreur(null);
     setEtat("pret");
     setPhase("");
@@ -350,6 +356,7 @@ export default function SaisieLots() {
         return;
       }
       setEvaluation(corps);
+      setEvalPerimee(false);
       setEtat("ok");
     } catch (e) {
       setErreur({
@@ -617,7 +624,9 @@ export default function SaisieLots() {
                     : boutonPrincipalStyle
                 }
               >
-                {occupe ? `${phase} ${secondes} s` : `Évaluer (${nbAffectes} affectés)`}
+                {occupe
+                  ? `${phase} ${secondes} s`
+                  : `${evaluation ? "Ré-évaluer" : "Évaluer"} (${nbAffectes} affectés)`}
               </button>
             </div>
 
@@ -625,46 +634,94 @@ export default function SaisieLots() {
 
             {etat === "ok" && evaluation && (
               <div style={{ marginTop: 24 }}>
-                <p style={succesStyle}>✓ Évaluation de la vague {idVague}.</p>
-
-                <div style={resumeStyle}>
-                  <span><strong>{evaluation.nb_tournees}</strong> tournées</span>
-                  <span><strong>{evaluation.distance_totale_km}</strong> km au total</span>
-                  <span><strong>{evaluation.nb_violations}</strong> violation(s)</span>
-                  <span>
-                    <strong>{evaluation.lots_non_affectes.length}</strong> lot(s) non affecté(s)
-                  </span>
-                </div>
-
-                {evaluation.lots_non_affectes.length > 0 && (
-                  <p style={{ fontSize: 13, color: "#555", marginTop: 12 }}>
-                    Lots non affectés : {evaluation.lots_non_affectes.join(", ")}
-                  </p>
+                {evalPerimee && (
+                  <div style={boitePerimeeStyle}>
+                    Affectation modifiée depuis cette évaluation — les résultats
+                    ci-dessous sont périmés. Clique « Ré-évaluer » pour les mettre à jour.
+                  </div>
                 )}
 
-                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                  {evaluation.tournees.map((t, i) => (
-                    <div key={i} style={carteTourneeStyle}>
-                      <div style={{ fontWeight: "bold", marginBottom: 6 }}>
-                        V{t.id_vehicule} · {nomChauffeur(t.id_chauffeur)} · départ {nomStation(t.id_station_depart)}
-                      </div>
-                      <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>
-                        {t.distance_km} km · charge {t.charge_m3}/{t.capacite_m3} m³ · {t.taux_charge} %
-                      </div>
-                      <div style={{ fontSize: 13, marginBottom: t.violations.length ? 6 : 0 }}>
-                        Ordre : {t.ordre_lots
-                          .map((idLot) => nomDestination(destinationDuLot(idLot)))
-                          .join(" → ")}
-                      </div>
-                      {t.violations.length > 0 && (
-                        <ul style={{ margin: "4px 0 0", paddingLeft: 20, color: "#c62828", fontSize: 13 }}>
-                          {t.violations.map((v, k) => (
-                            <li key={k}>[{v.type}] {v.message}</li>
+                <div style={evalPerimee ? { opacity: 0.45 } : undefined}>
+                  <p style={succesStyle}>✓ Évaluation de la vague {idVague}.</p>
+
+                  <div style={resumeStyle}>
+                    <span><strong>{evaluation.nb_tournees}</strong> tournées</span>
+                    <span><strong>{evaluation.distance_totale_km}</strong> km au total</span>
+                    <span style={evaluation.nb_violations > 0 ? { color: "#c62828" } : undefined}>
+                      <strong>{evaluation.nb_violations}</strong> violation(s)
+                    </span>
+                    <span>
+                      <strong>{evaluation.lots_non_affectes.length}</strong> lot(s) non affecté(s)
+                    </span>
+                  </div>
+
+                  {evaluation.lots_non_affectes.length > 0 && (
+                    <p style={{ fontSize: 13, color: "#555", marginTop: 12 }}>
+                      Lots non affectés : {evaluation.lots_non_affectes.join(", ")}
+                    </p>
+                  )}
+
+                  <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                    {evaluation.tournees.map((t, i) => {
+                      // Impact des violations :
+                      //  - capacite (id_lot null) = fait de tournee -> ligne charge/taux
+                      //  - caisson / source (id_lot) -> arret concerne dans l'ordre
+                      const violCapacite = t.violations.filter((v) => v.id_lot == null);
+                      const surchargee = violCapacite.length > 0;
+                      const violParLot = new Map();
+                      t.violations.forEach((v) => {
+                        if (v.id_lot != null) {
+                          if (!violParLot.has(v.id_lot)) violParLot.set(v.id_lot, []);
+                          violParLot.get(v.id_lot).push(v);
+                        }
+                      });
+
+                      return (
+                        <div key={i} style={carteTourneeStyle}>
+                          <div style={{ fontWeight: "bold", marginBottom: 6 }}>
+                            V{t.id_vehicule} · {nomChauffeur(t.id_chauffeur)} · départ {nomStation(t.id_station_depart)}
+                          </div>
+
+                          {/* Metriques : taux en rouge si surcharge, message d'impact juste dessous */}
+                          <div style={{ fontSize: 13, color: "#444", marginBottom: surchargee ? 2 : 6 }}>
+                            {t.distance_km} km · charge{" "}
+                            <span style={surchargee ? metriqueFauteStyle : undefined}>
+                              {t.charge_m3}/{t.capacite_m3} m³ · {t.taux_charge} %
+                            </span>
+                          </div>
+                          {violCapacite.map((v, k) => (
+                            <div key={k} style={ligneViolationStyle}>⚠ {v.message}</div>
                           ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
+
+                          {/* Ordre : chaque arret fautif en rouge, avec son ou ses badges */}
+                          <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.9 }}>
+                            <span style={{ color: "#666" }}>Ordre : </span>
+                            {t.ordre_lots.map((idLot, k) => {
+                              const vs = violParLot.get(idLot) ?? [];
+                              const enFaute = vs.length > 0;
+                              const nom = nomDestination(destinationDuLot(idLot));
+                              return (
+                                <span key={idLot}>
+                                  <span
+                                    style={enFaute ? arretFauteStyle : undefined}
+                                    title={enFaute ? vs.map((v) => v.message).join(" | ") : undefined}
+                                  >
+                                    {nom}
+                                    {vs.map((v, j) => (
+                                      <span key={j} style={badgeViolationStyle}>{v.type}</span>
+                                    ))}
+                                  </span>
+                                  {k < t.ordre_lots.length - 1 && (
+                                    <span style={{ color: "#999" }}> → </span>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
@@ -869,6 +926,36 @@ const carteTourneeStyle = {
   background: "#fafafa",
   border: "1px solid #e0e0e0",
   borderRadius: 8,
+};
+const metriqueFauteStyle = { color: "#c62828", fontWeight: "bold" };
+const ligneViolationStyle = { fontSize: 12, color: "#c62828", marginBottom: 2 };
+const arretFauteStyle = {
+  color: "#c62828",
+  fontWeight: "bold",
+  background: "#fdecea",
+  borderRadius: 4,
+  padding: "1px 5px",
+};
+const badgeViolationStyle = {
+  marginLeft: 4,
+  fontSize: 10,
+  fontWeight: "bold",
+  color: "white",
+  background: "#c62828",
+  borderRadius: 3,
+  padding: "0 4px",
+  textTransform: "uppercase",
+  letterSpacing: 0.3,
+  verticalAlign: "middle",
+};
+const boitePerimeeStyle = {
+  marginBottom: 12,
+  padding: "8px 12px",
+  background: "#fff8e1",
+  border: "1px solid #ffe082",
+  borderRadius: 8,
+  fontSize: 13,
+  color: "#5f4b00",
 };
 const boiteInfoStyle = {
   marginTop: 12,
