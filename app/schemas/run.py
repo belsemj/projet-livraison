@@ -76,3 +76,66 @@ class RunResume(BaseModel):
     nb_lots_non_servis: int
     distance_totale_km: float
     date_calcul: datetime
+
+
+# --- S8 J3 : KPIs (tableau de bord) ------------------------------------------
+
+
+class KpiTournee(BaseModel):
+    """Detail KPI d'une tournee du run (unite volume = m3)."""
+    id_tournee: int
+    id_vehicule: int
+    charge_volume: float      # somme des quantites affectees (m3)
+    capacite: float           # capacite du vehicule (m3)
+    remplissage_pct: float    # 100 * charge / capacite
+    distance_km: float
+
+
+class KpiDispersion(BaseModel):
+    """Dispersion d'une grandeur entre les tournees d'un run (equilibrage).
+
+    ecart_type : ecart-type de population (dispersion sur TOUTES les tournees
+    du run, pas un echantillon).
+    """
+    min: float
+    max: float
+    moyenne: float
+    ecart_type: float
+
+
+class KpisRun(BaseModel):
+    """KPIs d'un run, calcules a la lecture (aucun stockage).
+
+    Composes AU-DESSUS du resume du run (crud_run.lire_run) : distance et
+    servis/non servis proviennent du meme fait que l'ecran detail -> pas de
+    re-inference, pas de divergence J2. Les destinations servies / abandonnees
+    sont LUES depuis assembler_carte (statut D33-carto), jamais recalculees.
+    Seul ajout propre aux KPIs : la capacite -> remplissage + equilibrage.
+
+    Deux comptes de lots servis, volontairement distincts et honnetes :
+      - nb_lots_servis          : nombre d'AFFECTATIONS (= ecran detail ; un
+                                  lot fractionne compte plusieurs fois),
+      - nb_lots_distincts_servis : nombre de lots distincts reellement livres.
+    """
+    id_run: int
+    nb_tournees: int
+
+    # Distance
+    distance_totale_km: float
+
+    # Taux d'utilisation (remplissage capacite)
+    remplissage_moyen_pct: float
+
+    # Equilibrage de charge (sur volume ET distance)
+    equilibrage_volume: KpiDispersion       # m3
+    equilibrage_distance: KpiDispersion     # km
+
+    # Servis / non servis
+    nb_lots_servis: int
+    nb_lots_distincts_servis: int
+    nb_lots_non_servis: int
+    nb_destinations_servies: int
+    nb_destinations_abandonnees: int
+
+    # Detail par tournee
+    tournees: list[KpiTournee]

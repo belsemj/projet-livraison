@@ -6,7 +6,8 @@ from app.crud import run as crud_run
 from app.crud.carte import assembler_carte
 from app.services.carte_folium import rendre_carte_html
 from app.services.clustering import calculer_zones
-from app.schemas.run import RunLu, RunResume
+from app.services.kpis import calculer_kpis
+from app.schemas.run import RunLu, RunResume, KpisRun
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -50,6 +51,28 @@ def lire_run(id_run: int, db: Session = Depends(get_db)):
             detail=f"Run {id_run} introuvable",
         )
     return donnees
+
+
+@router.get("/{id_run}/kpis", response_model=KpisRun)
+def lire_kpis_run(id_run: int, db: Session = Depends(get_db)):
+    """KPIs d'un run (tableau de bord) : calcul a la lecture, aucun stockage.
+
+    Endpoint DEDIE (separe de GET /runs/{id_run}), meme logique de separation
+    que la carto : un besoin, une requete.
+
+    Compose au-dessus du resume du run et de la carte : distance, servis/non
+    servis et destinations servies/abandonnees proviennent des memes faits que
+    le detail et la carte (pas de re-inference -> pas de divergence J2). Les
+    KPIs n'ajoutent que le calcul capacite : remplissage + equilibrage
+    (volume ET distance).
+    """
+    kpis = calculer_kpis(db, id_run)
+    if kpis is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Run {id_run} introuvable",
+        )
+    return kpis
 
 
 @router.get("/{id_run}/carte", response_class=HTMLResponse)

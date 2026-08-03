@@ -67,7 +67,8 @@ export default function CarteView() {
           {/* Actions, poussees a droite de la barre.
               "Saisir des lots" est l'entree principale (creer + optimiser une
               vague) ; "Optimiser tous les lots" relance le solveur sur toute
-              la base ; "Detail" depend du run selectionne. */}
+              la base ; "Tableau de bord" et "Detail" dependent du run
+              selectionne (ils transmettent / suivent le run courant). */}
           <div style={actionsStyle}>
             <Link to="/saisie" style={lienSaisirStyle}>
               + Saisir des lots
@@ -75,6 +76,11 @@ export default function CarteView() {
             <Link to="/lancer" style={lienLancerStyle}>
               Optimiser tous les lots
             </Link>
+            {idRun != null && (
+              <Link to={`/kpis?run=${idRun}`} style={lienKpisStyle}>
+                Tableau de bord
+              </Link>
+            )}
             {idRun != null && (
               <Link to={`/runs/${idRun}`} style={lienDetailStyle}>
                 Détail →
@@ -159,6 +165,7 @@ const lienSaisirStyle = {
   padding: "6px 12px",
   fontFamily: "sans-serif",
   fontSize: 13,
+  whiteSpace: "nowrap",
 };
 
 // Action secondaire : optimiser toute la base (contour)
@@ -171,6 +178,22 @@ const lienLancerStyle = {
   padding: "6px 12px",
   fontFamily: "sans-serif",
   fontSize: 13,
+  whiteSpace: "nowrap",
+};
+
+// Lien "Tableau de bord" : meme famille bleue que Detail, en contour
+// (tous deux "consultent" le run courant), pour ne pas voler la vedette a
+// l'action principale verte.
+const lienKpisStyle = {
+  textDecoration: "none",
+  background: "white",
+  color: "#1565c0",
+  border: "1px solid #90caf9",
+  borderRadius: 6,
+  padding: "6px 12px",
+  fontFamily: "sans-serif",
+  fontSize: 13,
+  whiteSpace: "nowrap",
 };
 
 // Lien "Detail" (positionnement gere par actionsStyle)
@@ -182,6 +205,7 @@ const lienDetailStyle = {
   padding: "6px 12px",
   fontFamily: "sans-serif",
   fontSize: 13,
+  whiteSpace: "nowrap",
 };
 
 // Mode reduit : la carte occupe le reste de la page, en "carte" (bord + ombre)
