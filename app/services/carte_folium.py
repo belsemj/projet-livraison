@@ -38,6 +38,23 @@ PALETTE_TOURNEES = [
     "#ff1493",  # magenta
 ]
 
+# Palette 7 zones geographiques (D-serie zonage). Qualitative, distincte du
+# vert/rouge/gris des statuts. Numerotation nord->sud (cf. clustering.py).
+PALETTE_ZONES = {
+    1: "#6a51a3",  # Grand Tunis  - violet
+    2: "#2171b5",  # Nord-Ouest   - bleu
+    3: "#238b8b",  # Sahel        - teal
+    4: "#d9a300",  # Centre       - or
+    5: "#cc6600",  # Sfax         - orange brule
+    6: "#c51b7d",  # Djerid       - magenta
+    7: "#8c510a",  # Sud-Est      - brun
+}
+# Libelles lisibles des zones (interpretation stable a k=7, ordre nord->sud).
+NOM_ZONE = {
+    1: "Grand Tunis", 2: "Nord-Ouest", 3: "Sahel", 4: "Centre",
+    5: "Sfax", 6: "Djerid", 7: "Sud-Est",
+}
+
 
 def _popup_abandon(dest: dict) -> folium.Popup | None:
     """Popup listant les lots non livres d'une destination + leur raison.
@@ -60,7 +77,7 @@ def _popup_abandon(dest: dict) -> folium.Popup | None:
 
 def rendre_carte_html(data: dict) -> str:
     """Produit une page HTML Folium autonome a partir de la structure
-    assemblee par app.crud.carte.assembler_carte().
+    assemblee par app.crud.carte.assembler_carte(), enrichie du zonage.
 
     Socle Option A : cette fonction rend du HTML pret a embarquer. La meme
     structure 'data' sert de JSON a Leaflet en Option B, sans y toucher.
@@ -99,6 +116,27 @@ def rendre_carte_html(data: dict) -> str:
     for g in groupes_dest.values():
         g.add_to(m)
 
+    # --- Zones ML : calque analytique SEPARE (D-serie zonage) --------------
+    # Memes 100 destinations, mais colorees par zone geographique au lieu du
+    # statut. Decoche par defaut : c'est une lecture geographique, pas l'etat
+    # du run. Aucune interaction avec les groupes de statut ci-dessus.
+    grp_zones = folium.FeatureGroup(name="Zones geographiques (7)", show=False)
+    for dest in data["destinations"]:
+        z = dest.get("id_zone")
+        if z is None:
+            continue
+        couleur = PALETTE_ZONES.get(z, "#000000")
+        folium.CircleMarker(
+            location=(dest["lat"], dest["lon"]),
+            radius=6,
+            color=couleur,
+            fill=True,
+            fill_color=couleur,
+            fill_opacity=0.85,
+            tooltip=f"{dest['nom']} - Zone {z} ({NOM_ZONE.get(z, '?')})",
+        ).add_to(grp_zones)
+    grp_zones.add_to(m)
+
     # --- Tournees : une polyligne par tournee, ordre de passage ------------
     # Trace = depot_depart -> arret1 -> ... -> arretN -> depot_retour.
     for i, t in enumerate(data["tournees"]):
@@ -123,7 +161,7 @@ def rendre_carte_html(data: dict) -> str:
     # --- Controle des couches (activer/desactiver groupes) -----------------
     folium.LayerControl(collapsed=False).add_to(m)
 
-    # --- Legende fixe en surimpression -------------------------------------
+    # --- Legende statuts (bas gauche) --------------------------------------
     legende = f"""
     <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
                 background: white; padding: 10px 14px; border: 1px solid #999;
@@ -137,5 +175,22 @@ def rendre_carte_html(data: dict) -> str:
     </div>
     """
     m.get_root().html.add_child(folium.Element(legende))
+
+    # --- Legende zones (bas droite ; sert le calque "Zones geographiques") -
+    lignes_zones = "".join(
+        f'<div><span style="color:{PALETTE_ZONES[z]};">&#9679;</span> '
+        f'Zone {z} — {NOM_ZONE[z]}</div>'
+        for z in sorted(PALETTE_ZONES)
+    )
+    legende_zones = f"""
+    <div style="position: fixed; bottom: 30px; right: 30px; z-index: 1000;
+                background: white; padding: 8px 12px; border: 1px solid #999;
+                border-radius: 6px; font-family: sans-serif; font-size: 12px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.3);">
+      <b>Zones (calque)</b>
+      {lignes_zones}
+    </div>
+    """
+    m.get_root().html.add_child(folium.Element(legende_zones))
 
     return m.get_root().render()

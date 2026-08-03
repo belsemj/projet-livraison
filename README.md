@@ -162,3 +162,6 @@ Conséquences.
 
 Dette. Clé de statut carto « hors_vague » conservée pour compat front alors
 que sa sémantique est devenue « autre destination » ; renommage différé.
+
+D36 — Zonage géographique ML (clustering des destinations).
+Regroupement des 100 destinations en 7 zones par k-means sur coordonnées projetées en km (équirectangulaire, correction cos(lat) ~0.81), random_state=42. k=7 retenu au pic de silhouette (0.532), contre-épreuve Ward concordante (<0.01) → découpage robuste. Zones renumérotées nord→sud (id_zone stable). Non persisté : mapping id_destination→id_zone recalculé au read-time (cohérent « le ML calcule, la base ne stocke pas »). Couche séparée de D32 : k=5 (aligné dépôts) est le creux du silhouette → la géographie ne suit pas la partition par source ; les zones ne remplacent donc ni le statut D33-carto ni l'affectation dépôt.

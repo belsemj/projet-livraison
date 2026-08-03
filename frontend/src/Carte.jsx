@@ -61,6 +61,23 @@ const PALETTE_TOURNEES = [
   "#17becf", "#bcbd22", "#008080", "#ff1493",
 ];
 
+// Palette 7 zones geographiques (D-serie zonage) — memes codes que
+// carte_folium.py. Numerotation nord->sud (cf. clustering.py). Distincte du
+// vert/rouge/gris des statuts.
+const PALETTE_ZONES = {
+  1: "#6a51a3", // Grand Tunis  - violet
+  2: "#2171b5", // Nord-Ouest   - bleu
+  3: "#238b8b", // Sahel        - teal
+  4: "#d9a300", // Centre       - or
+  5: "#cc6600", // Sfax         - orange brule
+  6: "#c51b7d", // Djerid       - magenta
+  7: "#8c510a", // Sud-Est      - brun
+};
+const NOM_ZONE = {
+  1: "Grand Tunis", 2: "Nord-Ouest", 3: "Sahel", 4: "Centre",
+  5: "Sfax", 6: "Djerid", 7: "Sud-Est",
+};
+
 // --- Gestion du redimensionnement ---
 // Quand le conteneur de la carte change de taille (passage plein ecran,
 // redimensionnement fenetre), Leaflet doit etre prevenu sinon des tuiles
@@ -149,6 +166,9 @@ export default function Carte({ idRun }) {
     abandonnee: true,
     hors_vague: false, // decoche par defaut : c'est le gris qui encombre
   });
+  // Calque zones (ML) : decoche par defaut. C'est une lecture geographique,
+  // independante du run et des statuts. Peut cohabiter avec les statuts.
+  const [zonesVisibles, setZonesVisibles] = useState(false);
   // { id_tournee: bool }. Une tournee absente de l'objet = visible par defaut.
   const [tourneesVisibles, setTourneesVisibles] = useState({});
   const [tourneesDeployees, setTourneesDeployees] = useState(true);
@@ -195,6 +215,15 @@ export default function Carte({ idRun }) {
   const basculerStatut = (statut) => {
     setStatutsVisibles((prec) => ({ ...prec, [statut]: !prec[statut] }));
   };
+
+  // Zones effectivement presentes dans les donnees (pour la legende dynamique)
+  const zonesPresentes = [
+    ...new Set(
+      data.destinations
+        .map((d) => d.id_zone)
+        .filter((z) => z != null)
+    ),
+  ].sort((a, b) => a - b);
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
@@ -267,6 +296,33 @@ export default function Carte({ idRun }) {
                     </>
                   )}
                 </Popup>
+              </CircleMarker>
+            );
+          })}
+
+        {/* Zones ML : calque analytique SEPARE (D-serie zonage).
+            Memes destinations, colorees par zone au lieu du statut. Cohabite
+            avec les statuts (deux cercles superposables) ; on peut decocher
+            les statuts pour ne voir que les zones. */}
+        {zonesVisibles &&
+          data.destinations.map((dest, i) => {
+            if (dest.id_zone == null) return null;
+            const couleur = PALETTE_ZONES[dest.id_zone] ?? "#000000";
+            return (
+              <CircleMarker
+                key={`zone-${dest.id_destination ?? dest.nom}-${i}`}
+                center={[dest.lat, dest.lon]}
+                radius={6}
+                pathOptions={{
+                  color: couleur,
+                  fillColor: couleur,
+                  fillOpacity: 0.85,
+                }}
+              >
+                <Tooltip>
+                  {dest.nom} — Zone {dest.id_zone} (
+                  {NOM_ZONE[dest.id_zone] ?? "?"})
+                </Tooltip>
               </CircleMarker>
             );
           })}
@@ -350,6 +406,18 @@ export default function Carte({ idRun }) {
           <span style={{ color: COULEUR_STATUT.hors_vague }}>● Autres</span>
         </label>
 
+        {/* Calque zones ML : independant des statuts */}
+        <div style={{ marginTop: 6, borderTop: "1px solid #eee", paddingTop: 6 }}>
+          <label style={ligneStyle}>
+            <input
+              type="checkbox"
+              checked={zonesVisibles}
+              onChange={() => setZonesVisibles((v) => !v)}
+            />
+            <span>Zones géographiques ({zonesPresentes.length})</span>
+          </label>
+        </div>
+
         {/* Groupe Tournees : case parente + sous-cases (une par tournee) */}
         <div style={{ marginTop: 6, borderTop: "1px solid #eee", paddingTop: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -409,6 +477,23 @@ export default function Carte({ idRun }) {
           )}
         </div>
       </div>
+
+      {/* --- Legende zones : visible seulement quand le calque zones est actif --- */}
+      {zonesVisibles && zonesPresentes.length > 0 && (
+        <div style={legendeZonesStyle}>
+          <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+            Zones (calque)
+          </div>
+          {zonesPresentes.map((z) => (
+            <div key={`leg-zone-${z}`} style={ligneLegendeStyle}>
+              <span style={{ color: PALETTE_ZONES[z] ?? "#000" }}>●</span>
+              <span>
+                Zone {z} — {NOM_ZONE[z] ?? "?"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -446,4 +531,26 @@ const boutonDeplierStyle = {
   padding: 0,
   width: 14,
   lineHeight: 1,
+};
+
+// Legende du calque zones (bas GAUCHE, au-dessus du bouton plein ecran de
+// CarteView pour ne pas le recouvrir ; le panneau Couches occupe le bas droite
+// quand il est deploye, d'ou le choix du cote gauche).
+const legendeZonesStyle = {
+    position: "absolute",
+    bottom: 56,
+    left: 12,
+    zIndex: 1000,
+    background: "white",
+    padding: "8px 12px",
+    border: "1px solid #999",
+    borderRadius: 6,
+    fontFamily: "sans-serif",
+    fontSize: 12,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+  };
+const ligneLegendeStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
 };
