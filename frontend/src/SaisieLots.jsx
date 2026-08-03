@@ -767,6 +767,23 @@ function BlocErreur({ erreur }) {
   );
 }
 
+// Libelle d'un lot non servi. Depuis S7 J3, l'API renvoie des OBJETS
+// ({id_lot, nom_destination, id_destination, raison}), plus des identifiants
+// nus : un .join() direct produisait "[object Object]". On formate ici, avec
+// des replis defensifs (meme logique que RunDetail.formaterDestinationLot) :
+//   - objet complet  -> "Lot 45 — Nabeul (12)"
+//   - objet partiel  -> "Lot 45"
+//   - identifiant nu  -> "45"
+// Le detail complet (destination + raison lisible) reste un clic plus loin,
+// via "Voir le detail ->".
+function libelleLotNonServi(l) {
+  if (typeof l !== "object" || l === null) return String(l);
+  const dest = l.nom_destination
+    ? `${l.nom_destination}${l.id_destination != null ? ` (${l.id_destination})` : ""}`
+    : null;
+  return dest ? `Lot ${l.id_lot} — ${dest}` : `Lot ${l.id_lot}`;
+}
+
 function BlocResultat({ resultat }) {
   const {
     id_run, id_vague, total,
@@ -798,12 +815,13 @@ function BlocResultat({ resultat }) {
 
       {lots_non_servis.length > 0 && (
         <p style={{ fontSize: 13, color: "#555", marginTop: 12 }}>
-          Lots non servis : {lots_non_servis.join(", ")}
+          Lots non servis : {lots_non_servis.map(libelleLotNonServi).join(", ")}
         </p>
       )}
 
       <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
         <Link to={`/runs/${id_run}`} style={lienDetailStyle}>Voir le détail →</Link>
+        <Link to={`/kpis?run=${id_run}`} style={lienKpisStyle}>Tableau de bord →</Link>
         <Link to="/" style={lienCarteStyle}>Voir sur la carte →</Link>
       </div>
     </div>
@@ -983,6 +1001,18 @@ const lienDetailStyle = {
   padding: "8px 14px",
   fontSize: 13,
 };
+// Rebond "Tableau de bord" : bleu en contour, meme famille que dans CarteView
+// (consultation du run courant), distinct du "Detail" bleu plein.
+const lienKpisStyle = {
+  textDecoration: "none",
+  background: "white",
+  color: "#1565c0",
+  border: "1px solid #90caf9",
+  borderRadius: 6,
+  padding: "8px 14px",
+  fontSize: 13,
+};
+
 const lienCarteStyle = {
   textDecoration: "none",
   background: "#eef4fb",

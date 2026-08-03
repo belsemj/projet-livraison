@@ -130,6 +130,23 @@ function BlocErreur({ erreur }) {
   );
 }
 
+// Libelle d'un lot non servi. Depuis S7 J3, l'API renvoie des OBJETS
+// ({id_lot, nom_destination, id_destination, raison}), plus des identifiants
+// nus : un .join() direct produisait "[object Object]". On formate ici, avec
+// des replis defensifs (meme logique que RunDetail.formaterDestinationLot) :
+//   - objet complet  -> "Lot 45 — Nabeul (12)"
+//   - objet partiel  -> "Lot 45"
+//   - identifiant nu  -> "45"
+// Le detail complet (destination + raison lisible) reste un clic plus loin,
+// via "Voir le detail ->".
+function libelleLotNonServi(l) {
+  if (typeof l !== "object" || l === null) return String(l);
+  const dest = l.nom_destination
+    ? `${l.nom_destination}${l.id_destination != null ? ` (${l.id_destination})` : ""}`
+    : null;
+  return dest ? `Lot ${l.id_lot} — ${dest}` : `Lot ${l.id_lot}`;
+}
+
 // --- Bloc de resultat : resume + avertissements + liens vers les ecrans ---
 function BlocResultat({ resultat }) {
   const {
@@ -169,7 +186,7 @@ function BlocResultat({ resultat }) {
       {/* Detail des lots non servis, si le solveur en a abandonne */}
       {lots_non_servis.length > 0 && (
         <p style={{ fontSize: 13, color: "#555", marginTop: 12 }}>
-          Lots non servis : {lots_non_servis.join(", ")}
+          Lots non servis : {lots_non_servis.map(libelleLotNonServi).join(", ")}
         </p>
       )}
 
