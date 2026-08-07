@@ -1,5 +1,5 @@
 """
-verifier_geocodage.py — Semaine 2, Jour 3
+verifier_geocodage.py
 Projet : application web d'affectation des tâches de livraison (MDVRP).
 
 Vérifie et corrige les coordonnées GPS approximatives de data/stations.csv
@@ -21,15 +21,15 @@ from geopy.distance import geodesic
 # --------------------------------------------------------------------------
 # Configuration
 # --------------------------------------------------------------------------
-FICHIER_ENTREE  = Path("data/stations.csv")
+FICHIER_ENTREE = Path("data/stations.csv")
 FICHIER_CORRIGE = Path("data/coordinates_verifiees.csv")
 FICHIER_RAPPORT = Path("data/rapport_geocodage.csv")
 
 # Noms de colonnes du CSV d'entrée — À AJUSTER si les tiens diffèrent.
-COL_NOM         = "nom"
+COL_NOM = "nom"
 COL_GOUVERNORAT = "gouvernorat"
-COL_LAT         = "latitude"
-COL_LON         = "longitude"
+COL_LAT = "latitude"
+COL_LON = "longitude"
 
 # Au-delà de ce seuil (km), l'écart est signalé pour vérification manuelle.
 SEUIL_ALERTE_KM = 5.0
@@ -70,7 +70,7 @@ def main():
           f"(1 requête/seconde, patiente ~{len(lignes)} s)...\n")
 
     for i, ligne in enumerate(lignes, start=1):
-        nom  = ligne[COL_NOM].strip()
+        nom = ligne[COL_NOM].strip()
         gouv = ligne[COL_GOUVERNORAT].strip()
         lat0 = float(ligne[COL_LAT])
         lon0 = float(ligne[COL_LON])

@@ -1,16 +1,15 @@
 """
-Remesure S5 J5 (D34) : verification du retour au depot + surcout du decoupage.
+verification du retour au depot + surcout du decoupage.
 
 Remplace temporairement scripts/run_solveur.py pour la seance J5. Trois roles :
 
-  1. Verifier que D34 corrige le bug : chaque vehicule utilise rentre a SON
+  1. Verifier qu'on a corrige le bug : chaque vehicule utilise rentre a SON
      depot de depart (id_station_retour == id_station_depart), et aucune
      tournee ne franchit une frontiere de depot.
   2. Verifier qu'aucun arc prohibitif n'a ete emprunte (noeud virtuel jamais
      visite).
   3. Chiffrer le surcout du decoupage par source : resolution AVEC puis SANS
-     la contrainte (source=False), a budget de temps egal, pour donner a
-     M. Zghili un chiffre comparable au +38,1 % des caissons.
+     la contrainte (source=False), a budget de temps egal.
 
 Invocation (depuis la racine) :
     python -m scripts.run_solveur_D34
@@ -91,8 +90,8 @@ def main() -> None:
     print(resume(res, ctx))
     print(f"\ntemps de resolution : {duree:.1f} s")
 
-    # --- verifications D34 ------------------------------------------------
-    bloc("VERIFICATIONS D34")
+    # --- verifications ------------------------------------------------
+    bloc("VERIFICATIONS")
     pb_retour = coherence_retours(res)
     pb_front = frontieres_franchies(res, ctx)
 
@@ -111,7 +110,7 @@ def main() -> None:
             print("   ", p)
 
     # --- resolution SANS contrainte de source (comparaison) ---------------
-    bloc("RESOLUTION SANS CONTRAINTE DE SOURCE (reference J3)")
+    bloc("RESOLUTION SANS CONTRAINTE DE SOURCE")
     t0 = time.perf_counter()
     res_libre = resoudre(ctx, source=False)
     duree_libre = time.perf_counter() - t0
@@ -134,8 +133,7 @@ def main() -> None:
     print("\n  Note : 'sans source' n'impose pas le retour au depot de depart")
     print("  (les deux modeles partagent le meme code ; sans source, un")
     print("  vehicule peut encore etre affecte a un lot d'un autre depot).")
-    print("  Le chiffre mesure l'effet combine du rattachement, a presenter")
-    print("  comme tel a M. Zghili.")
+    print("  Le chiffre mesure l'effet combine du rattachement")
 
 
 if __name__ == "__main__":

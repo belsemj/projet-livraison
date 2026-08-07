@@ -1,16 +1,16 @@
 """
 Diagnostic LECTURE SEULE : coherence de chauffeur.id_station apres la reorg
-de flotte D33 (S5 J4).
+de flotte.
 
 La reorganisation D33 a reaffecte le id_station des VEHICULES aux depots
 (un standard + un refrigere par depot, un securise unique au depot 1). Le
-binome fixe chauffeur<->vehicule (D12) n'a pas suivi : le id_station des
+binome fixe chauffeur<->vehicule n'a pas suivi : le id_station des
 CHAUFFEURS appaires est reste celui d'avant la reorg. Sans impact sur le
 solveur (qui lit v.id_station), mais incoherent pour l'ecran 4, qui affiche
 le depot du chauffeur.
 
 Ce script ne fait qu'observer. Il liste chaque binome appaire, compare les
-deux depots et propose la correction (chauffeur suit son vehicule, D12) sans
+deux depots et propose la correction (chauffeur suit son vehicule) sans
 l'appliquer. Aucune ecriture.
 
 Invocation (depuis la racine) :

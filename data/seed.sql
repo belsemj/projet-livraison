@@ -1,9 +1,9 @@
--- Jeu de donnees initial (schema fige S2) : 5 stations sources, 100 destinations,
--- 14 chauffeurs, 12 vehicules. IDs entiers. Binome chauffeur<->vehicule (D12).
+-- Jeu de donnees initial (schema fige) : 5 stations sources, 100 destinations,
+-- 14 chauffeurs, 12 vehicules. IDs entiers. Binome chauffeur<->vehicule.
 -- Ordre d'insertion : station -> destination -> chauffeur -> vehicule (respect des FK).
 --
--- Etat S5 J4 : integre D15 (caissons specialises) et D33 (repartition de la
--- flotte sur les 5 depots + vehicule securise unique au depot 1). Les chauffeurs
+-- Etat *: integre caissons specialises et repartition de la
+-- flotte sur les 5 depots + vehicule securise unique au depot 1. Les chauffeurs
 -- mobilises suivent leur vehicule ; les chauffeurs non mobilisables (11, 13, 14)
 -- gardent leur station d'origine, sans effet operationnel.
 
@@ -117,7 +117,7 @@ INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) 
 INSERT INTO destination (id_destination, nom, gouvernorat, latitude, longitude) VALUES (100, 'Douz', 'Kebili', 33.466, 9.02);
 
 -- ===== CHAUFFEURS (14 : 11 actifs, 1 conge, 2 maladie) =====
--- Chauffeurs mobilises alignes sur le depot de leur vehicule (D33).
+-- Chauffeurs mobilises alignes sur le depot de leur vehicule.
 -- Chauffeurs 11 (conge), 13, 14 (maladie) non mobilisables : station d'origine.
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (1, 'Ahmed B.', 'actif', 4);
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (2, 'Mohamed T.', 'actif', 3);
@@ -135,8 +135,8 @@ INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (13, 'Riadh
 INSERT INTO chauffeur (id_chauffeur, nom, statut, id_station) VALUES (14, 'Maher O.', 'maladie', 2);
 
 -- ===== VEHICULES (12) + binome chauffeur attitre (NULL si non mobilisable) =====
--- Repartition D32 (S5 J4) : 1 standard + 1 refrigere par depot, 1 securise
--- unique au depot 1. Integre egalement D15 (S4 J2), restee non propagee ici.
+-- Repartition: 1 standard + 1 refrigere par depot, 1 securise
+-- unique au depot 1
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (1, 12.0, 1, 'actif', 'refrigere', 4, 1);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (2, 12.0, 1, 'actif', 'refrigere', 3, 2);
 INSERT INTO vehicule (id_vehicule, capacite, assurance, statut, type_caisson, id_station, id_chauffeur) VALUES (3, 16.0, 1, 'actif', 'standard', 3, 3);

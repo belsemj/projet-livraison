@@ -1,5 +1,5 @@
 """
-Reorganisation de la flotte — D33 (S5 J4).
+Reorganisation de la flotte.
 
 ECRIT EN BASE. Sauvegarde `livraison.db` avant toute modification.
 
@@ -13,11 +13,8 @@ redeployee. Cette propriete est verifiee avant et apres ecriture.
 
 Le depot 1 recoit le vehicule securise parce que la capacite l'impose : il
 concentre 40,13 m3 de standard et de refrigere, et ses deux plus gros porteurs
-possibles plafonnent a 40,00 m3. Sous l'hypothese B un caisson securise
+possibles plafonnent a 40,00 m3.un caisson securise
 transporte aussi du standard, donc ce troisieme vehicule soulage reellement.
-
-Ce placement est un artefact de jeu de test, de meme nature que D15. Il n'a
-pas ete valide par M. Zghili et doit etre presente comme tel.
 
 Invocation (depuis la racine du projet) :
     python -m scripts.reorganiser_flotte           # simulation, aucune ecriture
@@ -35,36 +32,36 @@ from app.models.vehicule import Vehicule
 
 
 # ---------------------------------------------------------------------------
-# Cible D33 : id_vehicule -> (id_station, type_caisson)
+# Cible: id_vehicule -> (id_station, type_caisson)
 # ---------------------------------------------------------------------------
 
 CIBLE: dict[int, tuple[int, str]] = {
-    6:  (1, "standard"),
+    6: (1, "standard"),
     12: (1, "refrigere"),
-    9:  (1, "securise"),
-    7:  (2, "standard"),
-    8:  (2, "refrigere"),
-    3:  (3, "standard"),
-    2:  (3, "refrigere"),
+    9: (1, "securise"),
+    7: (2, "standard"),
+    8: (2, "refrigere"),
+    3: (3, "standard"),
+    2: (3, "refrigere"),
     10: (4, "standard"),
-    1:  (4, "refrigere"),
-    5:  (5, "standard"),
-    4:  (5, "refrigere"),
+    1: (4, "refrigere"),
+    5: (5, "standard"),
+    4: (5, "refrigere"),
 }
 
 # Etat attendu AVANT ecriture. Si la base ne correspond pas, on refuse d'ecrire
 # plutot que d'appliquer une cible calculee sur d'autres donnees.
 ATTENDU_AVANT: dict[int, tuple[int, str]] = {
-    1:  (1, "standard"),
-    6:  (1, "standard"),
-    2:  (2, "standard"),
-    7:  (2, "standard"),
-    3:  (3, "refrigere"),
-    8:  (3, "standard"),
+    1: (1, "standard"),
+    6: (1, "standard"),
+    2: (2, "standard"),
+    7: (2, "standard"),
+    3: (3, "refrigere"),
+    8: (3, "standard"),
     12: (3, "refrigere"),
-    4:  (4, "standard"),
-    9:  (4, "securise"),
-    5:  (5, "standard"),
+    4: (4, "standard"),
+    9: (4, "securise"),
+    5: (5, "standard"),
     10: (5, "standard"),
 }
 

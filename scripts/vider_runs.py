@@ -5,7 +5,7 @@ id_run n'est pas une sequence : il est calcule par MAX(id_run)+1 a chaque
 POST. Vider ces tables suffit donc a faire repartir la numerotation a 1 au
 prochain lancement -- aucun compteur a reinitialiser.
 
-S7 J3 : la table lot_non_servi (lots abandonnes par run + raison) fait
+la table lot_non_servi (lots abandonnes par run + raison) fait
 desormais partie d'un run. On la purge ici aussi ; sinon des lignes
 orphelines subsistent et bloquent la FK lot_non_servi.id_lot -> lot.
 

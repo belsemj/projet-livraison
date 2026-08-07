@@ -1,12 +1,12 @@
 """
-S4 J3 - Etape 5 : application des arbitrages du superviseur.
+application des arbitrages du superviseur.
 
-D17 : Kerkennah (ile desservie par ferry) est remplacee par Jebeniana,
+Kerkennah (ile desservie par ferry) est remplacee par Jebeniana,
       localite continentale du gouvernorat de Sfax. Le jeu de donnees
       etant un jeu de test (Q1), le remplacement preserve les
       100 destinations sans introduire de contrainte maritime.
 
-Q-a : El Hencha est repositionnee sur les coordonnees validees.
+El Hencha est repositionnee sur les coordonnees validees.
 
 Les coordonnees de Jebeniana sont obtenues par geocodage puis
 controlees par le snapped_distance d'ORS avant ecriture.

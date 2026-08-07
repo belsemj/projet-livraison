@@ -17,20 +17,20 @@ def _coord(obj) -> dict:
 def assembler_carte(db: Session, id_run: int) -> Optional[dict]:
     """Assemble toutes les donnees geo d'un run pour la cartographie.
 
-    Socle unique : consomme par Folium aujourd'hui (Option A), expose
+    Socle unique : consomme par Folium (Option A), expose
     en JSON pour Leaflet (Option B), sans retouche.
 
     Ne reutilise PAS lire_run() : chargement en profondeur propre a la carto
     (tournee -> affectation -> lot -> destination). Deux endpoints, deux
     besoins, deux requetes.
 
-    Code couleur destinations (D33-carto, REVISE S7 J3) :
+    Code couleur destinations:
       - rouge = destination ayant AU MOINS un lot non servi dans ce run
       - vert  = destination servie (et sans lot non servi)
       - gris  = toute autre destination de la base
 
     Priorite : ROUGE > vert > gris. L'abandon n'est JAMAIS masque par un lot
-    servi sur la meme destination. C'est la revision de la priorite J2
+    servi sur la meme destination. C'est la revision de la priorite
     (vert > rouge) qui, quand un lot etait servi et un autre abandonne sur la
     meme destination, affichait vert et cachait l'abandon -> divergence carte
     vs resume. On lit maintenant le FAIT persiste (table lot_non_servi), plus

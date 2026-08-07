@@ -1,8 +1,6 @@
 """
-CRUD de la vague (S7) : insertion d'un ensemble de lots sous un id_vague.
+CRUD de la vague : insertion d'un ensemble de lots sous un id_vague.
 
-Le commit est du ressort du routeur (comme partout ailleurs) ; ici on prepare
-les objets et on flush pour obtenir les identifiants generes.
 """
 
 from datetime import datetime

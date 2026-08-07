@@ -1,4 +1,4 @@
-"""Diagnostic du lot systematiquement abandonne sous flotte reduite (S5 J3)."""
+"""Diagnostic du lot systematiquement abandonne sous flotte reduite."""
 
 from app.database import SessionLocal
 from app.services.matrice_etendue import ECHELLE, construire_contexte

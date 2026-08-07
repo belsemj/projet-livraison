@@ -9,7 +9,7 @@ Differences avec la matrice geodesique :
   - certaines paires peuvent etre non routables (renvoyees a None par ORS) ;
   - la generation depend d'un service externe et d'un quota.
 
-D17 (en attente) : Kerkennah est une ile desservie par ferry. ORS modelise
+Kerkennah est une ile desservie par ferry. ORS modelise
 la traversee comme un troncon routier ordinaire et renvoie une distance
 plausible, ce qui masque la duree reelle, les horaires et la capacite du
 bac. Les noeuds insulaires sont donc marques ici mais AUCUNE regle n'est

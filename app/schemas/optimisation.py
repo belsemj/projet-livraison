@@ -1,12 +1,12 @@
 """
-Schemas de l'endpoint POST /optimisations (S6 J1 ; id_vague S7 ; raison S7 J3).
+Schemas de l'endpoint POST /optimisations (id_vague ; raison).
 
 Requete : parametres optionnels de lancement (budget temps + vague ciblee ;
-le reste des reglages du solveur est fige par la calibration S5).
+le reste des reglages du solveur est fige par la calibration).
 Reponse : resume du run, volontairement leger. Le detail imbrique (tournees
 + affectations) releve de GET /runs/{id_run}, cote lecture.
 
-S7 J3 -- canal unifie "lot non servi" : chaque lot non livre porte desormais
+Canal unifie "lot non servi" : chaque lot non livre porte desormais
 une RAISON typee, derivee de l'etat solveur (source unique de verite) au lieu
 d'etre soit un 409 bloquant (capacite locale), soit un simple id sans cause.
 """

@@ -15,7 +15,7 @@ class Lot(Base):
         Integer, ForeignKey("destination.id_destination"), nullable=False
     )
 
-    # --- S5 J4 : contrainte de station source (D32, D33) ---
+    # --- Contrainte de station source ---
     # Depot ou la marchandise est physiquement stockee. Donnee d'ENTREE,
     # pas un resultat de calcul : precede l'optimisation, au meme titre que
     # id_destination. Nullable en dev (SQLite ne fait pas ALTER COLUMN

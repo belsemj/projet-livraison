@@ -13,7 +13,7 @@ class Vehicule(Base):
     type_caisson = Column(String(15), nullable=False)
     id_station = Column(Integer, ForeignKey("station.id_station"), nullable=False)
 
-    # Binome fixe chauffeur <-> vehicule (D12) : un chauffeur attitre par vehicule.
+    # Binome fixe chauffeur <-> vehicule : un chauffeur attitre par vehicule.
     # unique -> relation 1:1 ; nullable -> reserve / non assure sans chauffeur.
     id_chauffeur = Column(
         Integer,

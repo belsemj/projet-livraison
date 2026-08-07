@@ -141,7 +141,7 @@ export default function SaisieLots() {
     `V${v.id_vehicule} · ${v.type_caisson} · ${v.capacite} m³ · ` +
     `${nomStation(v.id_station)} · ${nomChauffeur(v.id_chauffeur)}`;
 
-  // --- Auto (Phase 1) : creer la vague puis l'optimiser ---
+  // --- Auto : creer la vague puis l'optimiser ---
   async function optimiser() {
     const probleme = validerLignes();
     if (probleme) {
@@ -206,7 +206,7 @@ export default function SaisieLots() {
     }
   }
 
-  // --- Manuel (Phase 2, etape 1) : persister la vague puis passer en affectation ---
+  // --- Manuel : persister la vague puis passer en affectation ---
   // Les lots n'ont d'id qu'apres persistance : on cree la vague, on apparie les
   // id_lots renvoyes (memes ordre que les lignes) et on bascule de vue.
   async function preparerAffectation() {
@@ -271,7 +271,7 @@ export default function SaisieLots() {
     }
   }
 
-  // Choix vehicule : le chauffeur est pre-rempli avec le binome (D12), modifiable.
+  // Choix vehicule : le chauffeur est pre-rempli avec le binome, modifiable.
   const majAffectVehicule = (i, val) => {
     setEvalPerimee(true);
     setAffect((prec) =>
@@ -308,7 +308,7 @@ export default function SaisieLots() {
     setPhase("");
   };
 
-  // --- Manuel (Phase 2, etape 2) : regrouper par couple et evaluer ---
+  // --- Manuel : regrouper par couple et evaluer ---
   async function evaluer() {
     const assignes = affect.filter(
       (r) => r.id_vehicule !== "" && r.id_chauffeur !== ""
@@ -767,7 +767,7 @@ function BlocErreur({ erreur }) {
   );
 }
 
-// Libelle d'un lot non servi. Depuis S7 J3, l'API renvoie des OBJETS
+// Libelle d'un lot non servi. l'API renvoie des OBJETS
 // ({id_lot, nom_destination, id_destination, raison}), plus des identifiants
 // nus : un .join() direct produisait "[object Object]". On formate ici, avec
 // des replis defensifs (meme logique que RunDetail.formaterDestinationLot) :

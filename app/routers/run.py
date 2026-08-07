@@ -16,7 +16,7 @@ def _greffer_zones(data: dict, db: Session) -> dict:
     """Ajoute la couche ML 'zone' sur la structure carto deja assemblee.
 
     Jointure FAITE AU-DESSUS d'assembler_carte : le zonage est independant du
-    run, donc on ne touche NI au statut D33-carto (servie / abandonnee /
+    run, donc on ne touche NI au statut carto (servie / abandonnee /
     hors_vague) NI a assembler_carte lui-meme. On greffe seulement :
       - 'id_zone' sur chaque destination (via mapping id_destination -> zone),
       - 'zones' : la liste des zones (centroides) pour legende / KPIs.
@@ -79,7 +79,7 @@ def lire_kpis_run(id_run: int, db: Session = Depends(get_db)):
 def lire_carte_run(id_run: int, db: Session = Depends(get_db)):
     """Sert une carte Folium (page HTML autonome) du run.
 
-    Option A (S6 J3) : l'API rend la carte, le front l'embarque (iframe).
+    Option A : l'API rend la carte, le front l'embarque (iframe).
     La structure produite par assembler_carte() est le socle qui deviendra
     le JSON de l'Option B (Leaflet) plus tard, sans retouche.
 

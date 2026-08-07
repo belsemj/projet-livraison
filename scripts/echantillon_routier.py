@@ -1,5 +1,5 @@
 """
-S4 J3 - Etape 2 : echantillon de comparaison geodesique / routier.
+echantillon de comparaison geodesique / routier.
 
 Tire 50 noeuds au hasard parmi les 105, interroge l'endpoint matrix
 d'OpenRouteService en une seule requete (2 450 paires ordonnees),

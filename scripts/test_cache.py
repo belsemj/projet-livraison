@@ -1,4 +1,4 @@
-"""Test d'invalidation du cache (S4 J2, etape 4)."""
+"""Test d'invalidation du cache"""
 import sqlite3
 from app.database import SessionLocal
 from app.services import distances

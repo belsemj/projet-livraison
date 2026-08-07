@@ -30,7 +30,7 @@ def calculer_kpis(db: Session, id_run: int) -> Optional[dict]:
     """KPIs d'un run, calcules a la LECTURE (aucun stockage).
 
     Principe : on ne recompte RIEN qui existe deja ailleurs, pour ne pas
-    recreer la divergence J2 (carte vs resume).
+    recreer la divergence (carte vs resume).
       - distance + servis/non servis : repris TELS QUELS du resume du run
         (crud_run.lire_run) -> identiques a l'ecran detail.
       - destinations servies / abandonnees : LUES depuis assembler_carte
@@ -97,7 +97,7 @@ def calculer_kpis(db: Session, id_run: int) -> Optional[dict]:
         round(sum(remplissages) / len(remplissages), 1) if remplissages else 0.0
     )
 
-    # Destinations : LU depuis assembler_carte (statut D33), jamais recalcule.
+    # Destinations : LU depuis assembler_carte, jamais recalcule.
     # assembler_carte renvoie None seulement si le run n'existe pas, cas deja
     # ecarte par lire_run ci-dessus ; on garde une garde defensive.
     carte = assembler_carte(db, id_run)

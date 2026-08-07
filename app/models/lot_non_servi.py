@@ -3,7 +3,7 @@ from app.database import Base
 
 
 class LotNonServi(Base):
-    """Un lot qu'un run n'a pas livre, avec la raison (S7 J3).
+    """Un lot qu'un run n'a pas livre, avec la raison .
 
     Il n'existe pas de table 'run' : id_run vit sur 'tournee' (et ici) comme
     simple identifiant d'execution, sans FK. Cette table enregistre, PAR RUN,
@@ -11,7 +11,7 @@ class LotNonServi(Base):
 
     But : une source unique de verite pour l'abandon. Jusqu'ici le "pourquoi"
     etait soit ephemere (reponse POST), soit re-infere de deux facons
-    concurrentes (resume vs carte) -- d'ou la divergence J2. Persiste ici une
+    concurrentes (resume vs carte). Persiste ici une
     fois, il est relu tel quel par le detail du run et par la carte.
 
     raison : miroir de solveur.LotNonServi.raison. Contrainte au meme jeu de

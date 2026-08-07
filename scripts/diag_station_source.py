@@ -1,5 +1,5 @@
 """
-Diagnostic de l'affectation des lots a une station source (S5 J4).
+Diagnostic de l'affectation des lots a une station source.
 
 LECTURE SEULE : aucune ecriture en base, aucun fichier produit.
 
@@ -16,10 +16,10 @@ Point de vigilance : la matrice routiere est ASYMETRIQUE. Le rattachement se
 lit dans le sens ALLER, matrice[station][destination]. Le script mesure aussi
 ce que donnerait le sens retour, pour chiffrer l'ecart.
 
-La matrice est lue BRUTE, sans le plancher D13 : le plancher ecrase les
+La matrice est lue BRUTE, sans le plancher : le plancher ecrase les
 distances sous 3 km et creerait des ex aequo artificiels dans un classement.
 
-Invocation (depuis la racine du projet) :
+Invocation :
     python -m scripts.diag_station_source
 """
 

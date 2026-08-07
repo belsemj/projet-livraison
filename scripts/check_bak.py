@@ -20,7 +20,7 @@ for f in fichiers:
     except Exception as e:
         print(f"{f:45s} {taille:10d}   ERREUR: {e}")
 
-print("\n-- temoin de correction (geocodage J3) --")
+print("\n-- temoin de correction (geocodage) --")
 for f in fichiers:
     if not os.path.exists(f):
         continue

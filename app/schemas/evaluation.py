@@ -1,5 +1,5 @@
 """
-Schemas de l'endpoint POST /evaluations (Phase 2, S7 J4).
+Schemas de l'endpoint POST /evaluations.
 
 Requete : une affectation MANUELLE figee par l'humain -- la vague concernee et,
 par tournee, un couple chauffeur/vehicule avec ses lots imposes.

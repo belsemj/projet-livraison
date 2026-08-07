@@ -47,7 +47,7 @@ def create_vehicule(data: VehiculeCreate, db: Session = Depends(get_db)):
     """
     Cree un vehicule et, le cas echeant, son binome chauffeur.
 
-    Regle D12 : un chauffeur ne peut etre associe qu'a un seul vehicule.
+    Regle : Un chauffeur ne peut etre associe qu'a un seul vehicule.
     La tentative d'affecter un chauffeur deja pris renvoie 409.
     """
     _check_station(db, data.id_station)
@@ -63,7 +63,7 @@ def update_vehicule(id_vehicule: int, data: VehiculeUpdate, db: Session = Depend
     """
     Mise a jour partielle : les champs absents sont laisses inchanges.
 
-    La regle D12 est reverifiee, le vehicule courant etant exclu du controle
+    La regle ci-dessus est reverifiee, le vehicule courant etant exclu du controle
     (reaffecter un chauffeur a son propre vehicule n'est pas un conflit).
     """
     if data.id_station is not None:
@@ -80,7 +80,7 @@ def update_vehicule(id_vehicule: int, data: VehiculeUpdate, db: Session = Depend
                summary="Supprimer un vehicule", responses=INTROUVABLE)
 def delete_vehicule(id_vehicule: int, db: Session = Depends(get_db)):
     """
-    Suppression physique (question ouverte Q7). Le chauffeur eventuellement
+    Suppression physique. Le chauffeur eventuellement
     en binome est libere de fait.
     """
     obj = crud.delete_vehicule(db, id_vehicule)

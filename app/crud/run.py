@@ -15,7 +15,7 @@ def lire_run(db: Session, id_run: int) -> Optional[dict]:
     Le resume (nb tournees, lots servis, distance) est recalcule a la lecture.
     Retourne None si aucune tournee ne porte cet id_run (-> 404 cote router).
 
-    S7 J3 : les lots non servis du run sont desormais PERSISTES (table
+    Les lots non servis du run sont desormais PERSISTES (table
     lot_non_servi) ; on les relit avec leur destination pour le popup carte et
     le detail. C'est le meme fait que celui affiche par le resume POST, plus une
     inference concurrente.
@@ -54,7 +54,7 @@ def lire_run(db: Session, id_run: int) -> Optional[dict]:
 
     # Carte id_lot -> destination (id + nom). Chaque lot appartient a une
     # destination ; on remonte le nom pour un affichage lisible cote front,
-    # sans se contenter de l'id brut (revision de D32).
+    # sans se contenter de l'id brut.
     ids_lots = {a.id_lot for t in tournees for a in t.affectations}
     dest_par_lot: dict[int, dict] = {}
     if ids_lots:
@@ -140,7 +140,7 @@ def lister_runs(db: Session) -> list[dict]:
     'date_calcul' du run = MAX des date_calcul de ses tournees (elles sont
     creees d'un bloc au moment du solve, donc quasi identiques).
 
-    S7 J3 : on joint le compte des lots non servis persistes par run
+    On joint le compte des lots non servis persistes par run
     (nb_lots_non_servis), pour que le selecteur de run l'affiche.
 
     Note : on charge les tournees + affectations en memoire. Sur le volume du

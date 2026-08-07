@@ -1,4 +1,4 @@
-"""D15 : calibrage du jeu de donnees.
+"""calibrage du jeu de donnees.
 1. Volumes des lots divises par 50 (changement d'unite).
 2. Composition du parc : activation du 12, specialisation des 3 et 9.
 Sauvegarde la base avant toute ecriture.

@@ -130,7 +130,7 @@ function BlocErreur({ erreur }) {
   );
 }
 
-// Libelle d'un lot non servi. Depuis S7 J3, l'API renvoie des OBJETS
+// Libelle d'un lot non servi, l'API renvoie des OBJETS
 // ({id_lot, nom_destination, id_destination, raison}), plus des identifiants
 // nus : un .join() direct produisait "[object Object]". On formate ici, avec
 // des replis defensifs (meme logique que RunDetail.formaterDestinationLot) :

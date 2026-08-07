@@ -1,4 +1,4 @@
-"""S5 J4 : ajout de id_station_source et id_vague sur lot
+"""ajout de id_station_source et id_vague sur lot
 
 Contrainte de station source (D32, D33). Deux colonnes :
 

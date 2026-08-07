@@ -1,9 +1,9 @@
 """
-Peuplement de id_station_source et id_vague sur les lots existants (S5 J4).
+Peuplement de id_station_source et id_vague sur les lots existants.
 
 ECRIT EN BASE. Sauvegarde `livraison.db` avant modification.
 
-Regle de rattachement (D33) :
+Regle de rattachement :
   - standard, refrigere : depot le plus proche de la destination, lu dans le
     sens ALLER matrice[depot][destination] (matrice BRUTE, sans plancher D13,
     pour eviter les ex aequo artificiels sous 3 km).
@@ -88,7 +88,7 @@ def main() -> None:
 
     print()
     ligne()
-    print("PEUPLEMENT station source + vague — D33")
+    print("PEUPLEMENT station source + vague")
     print("MODE SIMULATION (aucune ecriture)" if not ecrire else "MODE ECRITURE")
     ligne()
     print(f"Matrice : statut '{statut}'   Lots : {len(lots)}")

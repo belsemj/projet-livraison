@@ -2,7 +2,7 @@
 Consultation des tournees calculees par le solveur (lecture seule).
 
 Aucune ecriture n'est exposee : ces enregistrements sont produits par le
-module d'optimisation (S5), jamais saisis manuellement. Conformement au
+module d'optimisation, jamais saisis manuellement. Conformement au
 principe schema vs solveur, l'API se contente de les restituer.
 """
 

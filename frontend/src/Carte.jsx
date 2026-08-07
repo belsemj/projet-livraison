@@ -33,7 +33,7 @@ const ZOOM_INITIAL = 7;
 // URL de l'API : variable d'env Vite, avec repli sur le localhost de dev
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
-// Couleurs des destinations (D33-carto) — memes codes que le back
+// Couleurs des destinations (carto) — memes codes que le back
 const COULEUR_STATUT = {
   servie: "#2e7d32", // vert
   abandonnee: "#c62828", // rouge

@@ -1,4 +1,4 @@
-"""Re-geocodage provisoire des 4 depots confondus avec leur chef-lieu (D13).
+"""Re-geocodage provisoire des 4 depots confondus avec leur chef-lieu.
 Mode diagnostic : n'ecrit rien, affiche seulement les propositions.
 """
 import sqlite3

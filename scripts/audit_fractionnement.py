@@ -1,5 +1,4 @@
 """
-scripts/audit_fractionnement.py  (LECTURE SEULE)
 
 Identifie les lots "trop gros" pour le fractionnement CIBLE : ceux dont le
 volume depasse la capacite du plus gros vehicule autorise de leur depot

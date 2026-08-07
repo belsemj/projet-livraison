@@ -60,7 +60,7 @@ def modifier_station(id_station: int, data: StationUpdate, db: Session = Depends
                summary="Supprimer une station", responses=INTROUVABLE)
 def supprimer_station(id_station: int, db: Session = Depends(get_db)):
     """
-    Suppression physique, sans controle de dependance (question ouverte Q7) :
+    Suppression physique, sans controle de dependance :
     supprimer une station referencee par des chauffeurs ou des vehicules
     laisserait des enregistrements orphelins.
     """

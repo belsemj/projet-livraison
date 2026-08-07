@@ -1,4 +1,4 @@
-"""D13 : application des coordonnees provisoires des 4 depots.
+"""application des coordonnees provisoires des 4 depots.
 Ecrit stations.csv, puis met a jour la base par UPDATE cible.
 """
 import csv

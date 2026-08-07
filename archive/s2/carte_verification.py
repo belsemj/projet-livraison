@@ -1,12 +1,12 @@
 """
-carte_verification.py — Semaine 2, Jour 3
+carte_verification.py
 Projet : application web d'affectation des tâches de livraison (MDVRP).
 
 Génère une carte interactive (Folium / Leaflet) pour vérifier visuellement
 les localités signalées par verifier_geocodage.py.
 
 Pour chaque point douteux :
-  - marqueur ROUGE  = ancienne coordonnée (approximative, S1)
+  - marqueur ROUGE  = ancienne coordonnée (approximative)
   - marqueur VERT   = nouvelle coordonnée (Nominatim)
   - trait gris      = déplacement entre les deux
 
@@ -22,7 +22,7 @@ from pathlib import Path
 import folium
 
 FICHIER_RAPPORT = Path("data/rapport_geocodage.csv")
-FICHIER_CARTE   = Path("data/verification_carte.html")
+FICHIER_CARTE = Path("data/verification_carte.html")
 
 # Seuls ces statuts sont affichés (les "OK" n'ont pas besoin de contrôle).
 STATUTS_A_VERIFIER = {"ÉCART FORT", "REPLI GOUV.", "NON TROUVÉ"}

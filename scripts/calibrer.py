@@ -1,5 +1,5 @@
 """
-Harnais de calibration du solveur MDVRP -- S5 J3.
+Harnais de calibration du solveur MDVRP.
 
 Cinq campagnes, une seule lecture de la base :
     temps       : balayage de la limite de temps
@@ -71,12 +71,12 @@ def reduire_flotte(ctx: ContexteSolveur, n: int,
     -- on mesurerait une infaisabilite structurelle, pas une penalite.
 
     ATTENTION : cette garantie porte sur la PRESENCE d'un type, pas sur sa
-    CAPACITE. Au J3, retirer les deux derniers vehicules laisse un seul
+    CAPACITE. retirer les deux derniers vehicules laisse un seul
     refrigere de 16,00 m3 pour 16,20 m3 de lots refrigeres -- faisable au
     sens de la compatibilite, infaisable au sens du volume. D'ou
     reduire_et_controler() ci-dessous.
 
-    Reserve J4 : les vehicules sont retenus par id_vehicule croissant,
+    les vehicules sont retenus par id_vehicule croissant,
     sans egard pour leur station de rattachement. Une fois la contrainte
     de source active, cette selection pourra vider un depot entier de ses
     vehicules et rendre infaisables tous les lots qui en partent. Il
@@ -227,13 +227,13 @@ def campagne_strategies(ctx, limite: int) -> list[dict]:
 
 def campagne_cout_fixe(ctx, limite: int) -> list[dict]:
     """
-    Balayage du cout fixe par vehicule (D31).
+    Balayage du cout fixe par vehicule.
 
     Deux lectures attendues : le nombre de vehicules doit decroitre quand
     le cout monte, et la distance croitre. Une non-monotonie signale que
     la recherche decroche plutot qu'elle n'arbitre.
 
-    Resultat de la campagne : D31 invalidee. A nombre de vehicules
+    Resultat de la campagne : A nombre de vehicules
     constant (6 pour 200, 400, 600 et 1000 km), le cout fixe est un terme
     constant qui ne peut pas changer la solution optimale ; la distance
     passe pourtant de 5375 a 10266 km. Campagne conservee car c'est elle
@@ -253,10 +253,10 @@ def campagne_cout_fixe(ctx, limite: int) -> list[dict]:
 
 def campagne_flotte(ctx, limite: int) -> list[dict]:
     """
-    Courbe distance / taille de flotte, sans cout fixe (D31 invalide).
+    Courbe distance / taille de flotte, sans cout fixe.
 
     Le plafond est une contrainte, pas une penalite : il ne deforme pas
-    l'objectif et la recherche ne decroche pas. Mesure J3 : la distance
+    l'objectif et la recherche ne decroche pas. Mesure : la distance
     reste dans une bande de 7 % la ou le cout fixe la faisait varier d'un
     facteur 2,5.
 
@@ -271,7 +271,7 @@ def campagne_flotte(ctx, limite: int) -> list[dict]:
 
     Reserve : reduire_flotte() retire les vehicules par id_vehicule sans
     tenir compte du depot. Valable tant que la source des lots n'est pas
-    contrainte ; a reprendre au J4.
+    contrainte ; a reprendre.
     """
     lignes = []
     for n in FLOTTES:

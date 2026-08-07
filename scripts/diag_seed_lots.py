@@ -1,6 +1,6 @@
 """
 Diagnostic LECTURE SEULE : le generateur data/seed_lots.py reproduit-il le
-jeu de lots reel en base, une fois applique le facteur D15 (division par 50) ?
+jeu de lots reel en base, une fois applique le facteur(division par 50) ?
 
 On rejoue le RNG du generateur A L'IDENTIQUE (meme graine, meme sequence
 sample -> [uniform, choices, random, choices] par lot) pour obtenir le volume

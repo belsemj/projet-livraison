@@ -61,7 +61,7 @@ def modifier_destination(id_destination: int, data: DestinationUpdate,
                summary="Supprimer une destination", responses=INTROUVABLE)
 def supprimer_destination(id_destination: int, db: Session = Depends(get_db)):
     """
-    Suppression physique, sans controle de dependance (question ouverte Q7) :
+    Suppression physique, sans controle de dependance :
     supprimer une destination portant des lots laisserait des orphelins.
     """
     if not crud.delete_destination(db, id_destination):

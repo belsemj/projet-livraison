@@ -31,7 +31,7 @@ class TourneeLue(BaseModel):
 class LotNonServiLu(BaseModel):
     """Un lot non livre par le run, avec sa raison et sa destination.
 
-    Persiste (table lot_non_servi) depuis S7 J3. La destination (id + nom)
+    Persiste (table lot_non_servi). La destination (id + nom)
     alimente le popup carte et le detail sans que le front ait a la resoudre.
     """
     model_config = ConfigDict(from_attributes=True)
@@ -48,7 +48,7 @@ class RunLu(BaseModel):
     Il n'existe pas de table 'run' : le resume est recalcule a la lecture.
     'statut' n'est pas un attribut de run (il vit sur chaque tournee).
 
-    S7 J3 : les lots non servis SONT desormais persistes (table lot_non_servi)
+    Les lots non servis SONT desormais persistes (table lot_non_servi)
     et exposes ici -- meme fait que le resume POST, plus une inference.
     """
     id_run: int
@@ -67,7 +67,7 @@ class RunResume(BaseModel):
     afficher et selectionner un run. Le resume est recalcule a la lecture,
     'date_calcul' etant le MAX des date_calcul des tournees du run.
 
-    S7 J3 : nb_lots_non_servis (compte persiste) pour que le selecteur
+    nb_lots_non_servis (compte persiste) pour que le selecteur
     signale les runs a abandon.
     """
     id_run: int
@@ -108,7 +108,7 @@ class KpisRun(BaseModel):
 
     Composes AU-DESSUS du resume du run (crud_run.lire_run) : distance et
     servis/non servis proviennent du meme fait que l'ecran detail -> pas de
-    re-inference, pas de divergence J2. Les destinations servies / abandonnees
+    re-inference, pas de divergence. Les destinations servies / abandonnees
     sont LUES depuis assembler_carte (statut D33-carto), jamais recalculees.
     Seul ajout propre aux KPIs : la capacite -> remplissage + equilibrage.
 

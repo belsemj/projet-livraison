@@ -1,5 +1,5 @@
 """
-Persistance d'un run d'optimisation (S6 J1 ; parts S7 ; raison S7 J3).
+Persistance d'un run d'optimisation.
 
 Traduit un Resultat de solveur en lignes `tournee` et `affectation`, sous un
 id_run donne. Un ecart entre le resultat solveur et le schema est resorbe ici,
@@ -8,22 +8,20 @@ sans toucher au solveur (principe schema vs solveur) :
   - id_chauffeur : NOT NULL sur `tournee`, absent du resultat (qui ne porte
     que id_vehicule). Resolu par une lecture {id_vehicule -> id_chauffeur}.
 
-S7 -- fractionnement effectif : le solveur produit desormais des ARRETS
+Fractionnement effectif : le solveur produit desormais des ARRETS
 (id_lot, quantite_echelle), une entree par part livree. Un lot fractionne
 apparait donc dans plusieurs tournees, chacune portant SA quantite. On ecrit
 une affectation par arret, avec la quantite de la part (en m3). Le
 tout-ou-rien garantit qu'un lot persiste est toujours livre en entier : la
 somme des quantites de ses affectations vaut son volume.
 
-S7 J3 -- lots non servis : on persiste aussi, PAR RUN, les lots que le solveur
+Lots non servis : on persiste aussi, PAR RUN, les lots que le solveur
 n'a pas livres et leur raison typee (table lot_non_servi). C'est la trace
-durable du "pourquoi", relue par le detail du run et la carte (fin de la
-divergence J2). Ecrite dans la MEME transaction que les tournees.
+durable du "pourquoi", relue par le detail du run et la carte. Ecrite dans la MEME transaction que les tournees.
 
 Seules les tournees NON VIDES sont persistees : un vehicule inutilise renvoie
 id_station_retour=None (or la colonne est NOT NULL) et n'a pas de sens metier.
 
-Ne commit pas : la transaction est pilotee par le routeur (tout-ou-rien).
 """
 
 from sqlalchemy import func
@@ -79,7 +77,7 @@ def persister(db, res, ctx, id_run: int) -> None:
 
     # Lots non servis : trace durable (id_run, id_lot, raison). Meme transaction
     # tout-ou-rien que les tournees. res.lots_non_servis porte deja la raison
-    # derivee de l'etat solveur (source unique de verite, S7 J3).
+    # derivee de l'etat solveur (source unique de verite).
     for lns in res.lots_non_servis:
         db.add(LotNonServiRow(
             id_run=id_run,

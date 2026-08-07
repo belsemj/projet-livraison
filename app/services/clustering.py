@@ -1,5 +1,5 @@
 # app/services/clustering.py
-"""Zonage geographique des destinations par clustering (ML, brique S8 J2).
+"""Zonage geographique des destinations par clustering (ML).
 
 Principe (registre D-serie "zonage") :
   - On regroupe les 100 destinations en k zones geographiques par k-means.

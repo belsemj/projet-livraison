@@ -92,7 +92,7 @@ def maillon_seed(db):
     verdict("volumetrie en base", n_st == 5 and n_de == 100,
             f"{n_st} stations, {n_de} destinations")
 
-    # traces des corrections du J3 : ce qui a ete retire ne doit plus apparaitre
+    # traces des corrections : ce qui a ete retire ne doit plus apparaitre
     for terme in ("Kerkennah",):
         verdict(f"aucune trace residuelle de « {terme} » dans seed.sql",
                 terme.lower() not in texte.lower())

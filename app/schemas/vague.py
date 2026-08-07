@@ -1,5 +1,5 @@
 """
-Schemas de l'endpoint POST /vagues (S7).
+Schemas de l'endpoint POST /vagues.
 
 Une vague est un ensemble de lots saisis ensemble avant tout calcul. On la
 persiste sous un id_vague genere, puis POST /optimisations {id_vague} lance le

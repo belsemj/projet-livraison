@@ -10,7 +10,7 @@ Il fait deux choses, sans jamais bloquer ni ecrire en base :
   1. Controles -> violations NON bloquantes (capacite, caisson, source).
   2. Reordonnancement TSP par tournee : vehicule et lots figes, on n'optimise
      que l'ORDRE de visite (OR-Tools, un sous-probleme par tournee). Le
-     vehicule repart de son depot et y revient (D34).
+     vehicule repart de son depot et y revient.
 
 Conventions reprises telles quelles (aucune reinvention) :
   - matrice routiere + plancher D13 via distances.matrice_pour_solveur ;
@@ -28,7 +28,7 @@ Decisions de cadrage :
   - PAS de dimension capacite contraignante dans le TSP : une tournee
     surchargee ne doit pas rendre le TSP infaisable (controles non bloquants).
     La capacite est rapportee, jamais un echec de resolution.
-  - BINOME non controle : un chauffeur different de l'attitre est accepte
+  - BINOME D12 non controle : un chauffeur different de l'attitre est accepte
     sans signalement.
   - COUVERTURE DE VAGUE : les lots de la vague absents de l'affectation sont
     signales 'non affectes' (info, non bloquant).
@@ -132,7 +132,7 @@ def evaluer(db, id_vague: str,
       2. pour chaque tournee imposee : controles + reordonnancement TSP ;
       3. couverture de vague : lots de la vague non affectes.
     """
-    # matrice routiere brute -> plancher (dormant). On ignore
+    # matrice routiere brute -> plancher D13 (dormant). On ignore
     # le statut 'valide/perimee' ici : l'evaluateur n'est pas l'endroit pour
     # certifier la matrice (le solveur/controle s'en charge deja).
     matrice, _noeuds, _statut = obtenir_matrice_routiere(db)
@@ -249,7 +249,7 @@ def _reordonner(matrice, vehicule,
     """
     Reordonne les arrets d'une tournee (vehicule et lots figes) par TSP.
 
-    Noeud 0 = depot du vehicule (depart ET retour). Noeuds 1..m = lots
+    Noeud 0 = depot du vehicule (depart ET retour, D34). Noeuds 1..m = lots
     dans l'ordre fourni. On extrait la sous-matrice routiere correspondante
     (asymetrie D16 preservee), on la convertit en metres entiers (x1000) comme
     matrice_etendue, puis on resout un TSP a un seul vehicule -- sans aucune

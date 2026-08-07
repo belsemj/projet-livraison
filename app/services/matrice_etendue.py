@@ -1,19 +1,19 @@
 """
-Construction du contexte d'entree du solveur OR-Tools (S5 ; parts S7).
+Construction du contexte d'entree du solveur OR-Tools.
 
 Etend la matrice canonique 105x105 (BF2) en une matrice orientee PART, seule
 forme exploitable par le solveur.
 
-Convention d'index etendue (D27, revisee S7) :
+Convention d'index etendue :
     0   .. 4          stations (depots)        -- identique a distances.py
     5   .. 5+P-1      noeuds de livraison, UNE PAR PART, dans l'ordre id_lot
     5+P              noeud d'arrivee virtuel
 ou P est le nombre total de PARTS. Un lot qui tient dans un camion autorise de
 son depot = 1 part (P augmente de 1) ; un lot trop gros = k parts (D-serie
-fractionnement, S7). Avant le fractionnement, P == nombre de lots et la
+fractionnement). Avant le fractionnement, P == nombre de lots et la
 convention se confond avec l'ancienne (index 5..124, arrivee 125).
 
---- Fractionnement CIBLE (S7) -------------------------------------------------
+--- Fractionnement CIBLE -------------------------------------------------
 Un lot n'est decoupe QUE s'il ne tient dans AUCUN vehicule autorise de son
 depot (meme id_station_source + caisson compatible). Dans ce cas :
     c_max = capacite du plus gros vehicule autorise
@@ -25,20 +25,20 @@ caractere "tout-ou-rien" (un lot livre en entier ou pas du tout) est impose
 cote solveur en liant les etats de service des parts d'un meme lot -- il n'a
 pas de trace ici : matrice_etendue se contente de produire les parts.
 
-Q_min : abandonne (S7). Les parts egales ne produisent jamais de miettes, le
-seuil minimal de S2 devient inutile.
+Q_min : abandonne. Les parts egales ne produisent jamais de miettes, le
+seuil minimal devient inutile.
 
 --- Jumeaux ------------------------------------------------------------------
 Deux noeuds d'une meme destination sont des "jumeaux" : meme index de base,
 distance mutuelle nulle. Cela vaut desormais AUSSI pour les parts d'un meme
-lot (meme destination). Le plancher D13 est applique AVANT l'extension, sur la
+lot (meme destination). Le plancher est applique AVANT l'extension, sur la
 matrice de base, ou les jumeaux relevent de la diagonale.
 
---- Arrivee virtuelle (D34) --------------------------------------------------
+--- Arrivee virtuelle --------------------------------------------------
 Rendue inatteignable (cout d'entree prohibitif) : ends pointe sur les depots
 de depart. Voir le bloc detaille dans construire_contexte.
 
-D26 : OR-Tools n'admet que des entiers. Distances en metres entiers, volumes
+OR-Tools n'admet que des entiers. Distances en metres entiers, volumes
 et capacites en centiemes.
 """
 
@@ -58,10 +58,10 @@ from app.services.distances import (
     obtenir_matrice_routiere,
 )
 
-# Facteur de mise a l'echelle des volumes et capacites (D26).
+# Facteur de mise a l'echelle des volumes et capacites.
 ECHELLE = 100
 
-# Compatibilite caisson (hypothese B). Dupliquee depuis solveur.CAISSONS_COUVERTS
+# Compatibilite caisson. Dupliquee depuis solveur.CAISSONS_COUVERTS
 # a dessein : l'importer creerait un import circulaire, solveur important deja
 # ce module. Source de verite : solveur.couvre.
 _CAISSONS_COUVERTS: dict[str, set[str]] = {
@@ -162,7 +162,7 @@ def charger_lots(db, id_vague: str | None = None) -> list[Lot]:
 
 def charger_flotte(db) -> list[Vehicule]:
     """
-    Flotte mobilisable (D23) : vehicule assure, appaire a un chauffeur,
+    Flotte mobilisable : vehicule assure, appaire a un chauffeur,
     dont le chauffeur est actif. `vehicule.statut` n'est pas discriminant
     (tous a 'actif' dans le jeu courant).
     """
@@ -237,7 +237,7 @@ def construire_contexte(db, id_vague: str | None = None) -> ContexteSolveur:
     decoupage par depot.
     """
     matrice_base, noeuds_base, statut = obtenir_matrice_routiere(db)
-    # Plancher D13 applique ICI, sur la base : les jumeaux relevent de la
+    # Plancher applique ICI, sur la base : les jumeaux relevent de la
     # diagonale et sont donc epargnes. Dormant depuis D14.
     matrice_base = matrice_pour_solveur(matrice_base)
 
@@ -304,7 +304,7 @@ def construire_contexte(db, id_vague: str | None = None) -> ContexteSolveur:
 
     matrice_km = np.zeros((n, n), dtype=float)
     matrice_km[: n - 1, : n - 1] = sous
-    # Noeud d'arrivee virtuel (index_arrivee) : INERTE depuis le J4 (D34).
+    # Noeud d'arrivee virtuel (index_arrivee).
     #
     # ends pointe sur le depot de depart de chaque vehicule ; le noeud virtuel
     # n'est plus une fin de tournee. On le rend inatteignable (cout d'entree
@@ -330,7 +330,7 @@ def construire_contexte(db, id_vague: str | None = None) -> ContexteSolveur:
         demandes=demandes,
         capacites=[v.capacite_echelle for v in vehicules],
         starts=[v.index_depart for v in vehicules],
-        # D34 : chaque vehicule termine a SON depot de depart (start == end).
+        # Chaque vehicule termine a SON depot de depart (start == end).
         ends=[v.index_depart for v in vehicules],
         lots=lots,
         vehicules=vehicules,
@@ -345,7 +345,7 @@ def controler(ctx: ContexteSolveur) -> list[str]:
     Anomalies bloquantes ou suspectes. Liste vide = contexte sain.
 
     Les lignes prefixees '[info]' ne sont PAS bloquantes : elles signalent
-    des lots que le solveur abandonnera proprement par disjonction (D28),
+    des lots que le solveur abandonnera proprement par disjonction,
     resultat d'exploitation et non erreur de donnees. Les autres lignes sont
     des anomalies franches.
     """
@@ -380,7 +380,7 @@ def controler(ctx: ContexteSolveur) -> list[str]:
                         f"{indices[i]} et {indices[j]} (jumeaux/parts)"
                     )
 
-    # --- faisabilite caisson, DEPOT PAR DEPOT (S5 J4) ---------------------
+    # --- faisabilite caisson, DEPOT PAR DEPOT ---------------------
     # Raisonne sur le volume TOTAL des lots (les parts n'y changent rien :
     # somme des parts == volume du lot). La contrainte de source ayant decoupe
     # le probleme, une capacite globale suffisante ne garantit plus rien.
@@ -422,7 +422,7 @@ def controler(ctx: ContexteSolveur) -> list[str]:
                 # toute la charge. Le solveur en servira autant qu'il peut et
                 # lachera le surplus par disjonction (raison capacite_locale au
                 # niveau lot). NON bloquant : c'est un resultat d'exploitation,
-                # pas une erreur de donnees -> plus de 409 (S7 J3).
+                # pas une erreur de donnees -> plus de 409.
                 a.append(
                     f"[info] depot {depot}, caisson '{besoin}' : charge locale "
                     f"{charge/ECHELLE:.2f} > capacite {capa/ECHELLE:.2f} m3 — "
@@ -430,7 +430,7 @@ def controler(ctx: ContexteSolveur) -> list[str]:
                 )
 
     # Garde-fou global : la demande totale depasse la capacite totale de la
-    # flotte. Meme logique que la capacite locale (S7 J3) : le solveur lachera
+    # flotte. Meme logique que la capacite locale : le solveur lachera
     # le surplus par disjonction (capacite_locale au niveau lot). NON bloquant
     # -> reste un diagnostic dans 'avertissements', jamais un 409.
     if sum(ctx.demandes) > sum(ctx.capacites):

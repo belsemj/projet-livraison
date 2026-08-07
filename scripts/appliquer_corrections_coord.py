@@ -1,5 +1,5 @@
 """
-S4 J3 - Etape 2 ter : application des corrections de coordonnees validees.
+application des corrections de coordonnees validees.
 
 Lit data/regeocodage_controle.csv, ne retient que les lignes marquees
 ACCEPTE, met a jour la table destination dans livraison.db, puis

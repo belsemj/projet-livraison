@@ -1,5 +1,5 @@
 """
-Solveur MDVRP (OR-Tools) -- S5 J2, calibre au J3, decoupe au J4, parts au S7.
+Solveur MDVRP (OR-Tools)
 
 Consomme le ContexteSolveur produit par matrice_etendue.construire_contexte()
 et renvoie une solution exploitable : une tournee par vehicule, plus la liste
@@ -8,13 +8,13 @@ des lots non servis.
 Perimetre : distance + capacite + disjonctions penalisees + caissons + source
 + fractionnement (tout-ou-rien).
 
-Disjonctions (D28) : chaque noeud de livraison est optionnel, moyennant une
+Disjonctions : chaque noeud de livraison est optionnel, moyennant une
 penalite. Sans cela, la moindre insuffisance de capacite fait echouer la
 resolution en renvoyant None, sans diagnostic. Avec, le solveur livre ce
 qu'il peut et signale le reste -- comportement attendu d'un outil
 d'exploitation.
 
-Parts / fractionnement (S7) : un lot trop gros pour tout vehicule autorise de
+Parts / fractionnement : un lot trop gros pour tout vehicule autorise de
 son depot est decoupe en PARTS par matrice_etendue (chaque part est un noeud).
 Ici, deux consequences :
   - la restriction caisson/source s'applique a CHAQUE part (memes regles) ;
@@ -23,22 +23,22 @@ Ici, deux consequences :
     penalite d'abandon est mutualisee sur les parts.
 Un lot non fractionne a une seule part : le comportement est identique a avant.
 
-Caissons (hypothese B) : chaque lot est restreint aux vehicules dont le
+Caissons : chaque lot est restreint aux vehicules dont le
 caisson couvre son exigence. La contrainte est debrayable (caissons=False)
 afin de mesurer son surcout a budget de temps egal.
 
-Station source (D33, S5 J4) : chaque lot n'est servable que par les vehicules
+Station source : chaque lot n'est servable que par les vehicules
 bases a son depot d'appartenance (lot.id_station_source). Fusionnee avec la
 contrainte caisson dans le meme domaine de VehicleVar : le domaine autorise
 est l'INTERSECTION des deux conditions. Debrayable (source=False).
 
-Cout fixe par vehicule (D31) : mecanisme conserve comme parametre mais
+Cout fixe par vehicule : mecanisme conserve comme parametre mais
 NEUTRALISE par defaut (degrade la recherche au lieu de l'orienter).
 
-Calibration (J3, recalibree S6 J1) : limite de temps, penalite d'abandon,
+Calibration : limite de temps, penalite d'abandon,
 cout fixe et strategie de recherche sont des parametres de resoudre(). Les
 valeurs par defaut sont les valeurs de production. A revalider apres l'ajout
-des parts (S7), meme si l'impact est marginal : le fractionnement cible
+des parts, meme si l'impact est marginal : le fractionnement cible
 n'ajoute des noeuds que pour les rares lots trop gros.
 """
 
@@ -53,7 +53,7 @@ from app.services.matrice_etendue import ContexteSolveur, ECHELLE
 # long detour envisageable (max de la matrice ~755 km) pour que l'abandon
 # reste un dernier recours et jamais une optimisation de confort.
 #
-# Validee au J3 : a flotte complete, 5 000 000 et 500 000 m servent les
+# a flotte complete, 5 000 000 et 500 000 m servent les
 # 120 lots ; 50 000 m en abandonne 39 et 5 000 m en abandonne 118. La
 # bascule se situe donc entre 500 et 50 km, coherente avec un cout
 # marginal moyen d'environ 25 km par lot. 500 000 m suffirait sur ce jeu
@@ -61,28 +61,28 @@ from app.services.matrice_etendue import ContexteSolveur, ECHELLE
 # passerait par chance, pas par construction. 5 000 000 conserve un
 # facteur 6,6 de marge.
 #
-# S7 : pour un lot fractionne en k parts, cette penalite est repartie a
+# pour un lot fractionne en k parts, cette penalite est repartie a
 # raison de penalite // k par part. Abandonner le lot (toutes parts liees)
 # coute donc ~penalite au total, pas k * penalite -- la comparaison avec le
 # cout de livraison reste calibree comme avant.
 PENALITE_ABANDON_M = 5_000_000
 
-# Cout fixe d'une sortie de vehicule, en metres (D31) -- DESACTIVE.
+# Cout fixe d'une sortie de vehicule, en metres -- DESACTIVE.
 COUT_FIXE_VEHICULE_M = 0
 
-# 45 s. Recalibree au S6 J1 sur le probleme DECOMPOSE (contrainte de source,
-# S5 J4). Le balayage 5-60 s montre un plateau a 30 s : 4446,5 km, inchange
+# 45 s. Recalibree au S6 J1 sur le probleme DECOMPOSE (contrainte de source).
+# Le balayage 5-60 s montre un plateau a 30 s : 4446,5 km, inchange
 # jusqu'a 60 s. On retient 45 s -- 50 % de marge au-dessus du plateau observe.
 # La borne de requete (le=120) permet d'ajuster a la hausse sans redeploiement.
 #
 # Reserve : recalibrage mesure sous uvicorn sans --reload. A refaire apres
-# l'ajout des parts (S7) si le nombre de lots trop gros devient significatif.
+# l'ajout des parts si le nombre de lots trop gros devient significatif.
 LIMITE_SECONDES = 45
 
 PREMIERE_SOLUTION = "PARALLEL_CHEAPEST_INSERTION"
 METAHEURISTIQUE = "GUIDED_LOCAL_SEARCH"
 
-# Cout d'entree du noeud d'arrivee virtuel, rendu inatteignable au J4 (D34).
+# Cout d'entree du noeud d'arrivee virtuel, rendu inatteignable.
 # Doit correspondre au PROHIBITIF_KM pose dans matrice_etendue (1e9 km), une
 # fois converti en metres entiers par la matrice (x1000). Sert de seuil pour
 # exclure de la distance affichee un eventuel arc vers ce noeud.
@@ -208,7 +208,7 @@ def resoudre(ctx: ContexteSolveur,
     )
 
     # --- restriction des vehicules autorises par PART ---------------------
-    # Caisson (hypothese B) et station source (D33) restreignent le domaine de
+    # Caisson et station source restreignent le domaine de
     # VehicleVar. On les combine dans un seul passage ; la restriction d'un lot
     # s'applique identiquement a chacune de ses parts. Chacune debrayable.
     #
@@ -220,7 +220,7 @@ def resoudre(ctx: ContexteSolveur,
     if caissons or source:
         _restreindre_vehicules(ctx, manager, routing, autorises_par_lot)
 
-    # --- disjonctions + tout-ou-rien par lot (D28 ; parts S7) -------------
+    # --- disjonctions + tout-ou-rien par lot -------------
     # Chaque PART est optionnelle (droppable) moyennant une part de penalite.
     # Pour un lot (fractionne ou non), on lie les ActiveVar de ses parts : le
     # solveur les sert TOUTES ou n'en sert AUCUNE -- jamais un demi-lot. La
@@ -236,7 +236,7 @@ def resoudre(ctx: ContexteSolveur,
         for idx in indices[1:]:
             cp.Add(routing.ActiveVar(idx) == routing.ActiveVar(indices[0]))
 
-    # --- noeud d'arrivee virtuel rendu optionnel gratuit (D34) -------------
+    # --- noeud d'arrivee virtuel rendu optionnel gratuit -------------
     # Il reste present (taille du modele conservee) avec une ligne sortante
     # nulle. Une disjonction a penalite NULLE l'autorise a ne jamais etre
     # visite sans cout : le solveur le laisse systematiquement de cote.
@@ -351,14 +351,14 @@ def _extraire(ctx, manager, routing, solution,
                 charge += part.volume_echelle
             suivant = solution.Value(routing.NextVar(index))
             cout_arc = routing.GetArcCostForVehicle(index, suivant, v.rang)
-            # Garde-fou D34 : le noeud virtuel est inatteignable. Un arc
+            # Garde-fou : le noeud virtuel est inatteignable. Un arc
             # prohibitif signalerait qu'il a ete emprunte -- on l'exclut de la
             # somme pour ne pas faire exploser la distance affichee.
             if cout_arc < PROHIBITIF_M:
                 distance += cout_arc
             index = suivant
 
-        # D34 : le vehicule termine a SON depot de depart.
+        # le vehicule termine a SON depot de depart.
         retour = v.id_station if arrets else None
 
         total += distance

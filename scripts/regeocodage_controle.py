@@ -1,5 +1,5 @@
 """
-S4 J3 - Etape 2 bis : re-geocodage controle des noeuds imprecis.
+re-geocodage controle des noeuds imprecis.
 
 Selectionne les noeuds dont les coordonnees ont 2 decimales ou moins,
 les re-interroge via Nominatim, puis arbitre chaque proposition avec

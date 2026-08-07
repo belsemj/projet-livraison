@@ -1,4 +1,3 @@
-# scripts/verifier_zones.py
 """Verification read-only du zonage calcule DEPUIS LA BASE (pas le CSV).
 
 Confirme que les coords en base produisent bien les 7 zones attendues et que

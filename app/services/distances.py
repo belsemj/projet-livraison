@@ -6,20 +6,20 @@ Ordre canonique des noeuds :
     index 0 .. 4    -> stations (depots), id_station croissant
     index 5 .. 104  -> destinations, id_destination croissant
 
-Cette convention d'index est partagee avec le solveur OR-Tools (S5)
+Cette convention d'index est partagee avec le solveur OR-Tools 
 et ne doit plus etre modifiee une fois la matrice generee.
 
-D13 : la matrice stockee reste brute (distances geodesiques exactes).
+La matrice stockee reste brute (distances geodesiques exactes).
 Le plancher applique aux noeuds geographiquement confondus est une regle
 metier, portee par matrice_pour_solveur() et non par le stockage.
 
-D14 : les coordonnees des 4 depots regionaux, initialement confondues avec
+Les coordonnees des 4 depots regionaux, initialement confondues avec
 le chef-lieu de leur gouvernorat, ont ete re-geocodees en zone industrielle
 a titre provisoire. D14 traite la cause, D13 couvrait le symptome : depuis
 D14 la matrice ne contient plus de distance nulle hors diagonale, et
 matrice_pour_solveur() devient un garde-fou dormant.
 
-Cache (S4 J2) : la matrice est persistee dans data/ et accompagnee d'un
+Cache : la matrice est persistee dans data/ et accompagnee d'un
 temoin d'integrite (matrice_meta.json). obtenir_matrice() recharge le cache
 s'il est valide et le reconstruit sinon.
 """
@@ -44,7 +44,7 @@ DOSSIER_DONNEES = Path("data")
 VERSION_FORMAT = 1
 
 # Course intra-urbaine moyenne : hypothese de travail, a reviser des que
-# les coordonnees GPS reelles des depots seront connues (question Q1).
+# les coordonnees GPS reelles des depots seront connues.
 DISTANCE_PLANCHER_KM = 3.0
 
 
@@ -108,12 +108,12 @@ def construire_matrice(noeuds: list[Noeud], decimales: int = 3) -> np.ndarray:
 def matrice_pour_solveur(matrice: np.ndarray,
                          plancher_km: float = DISTANCE_PLANCHER_KM) -> np.ndarray:
     """
-    Applique un plancher (D13) aux paires de noeuds distincts mais
+    Applique un plancher aux paires de noeuds distincts mais
     geographiquement confondus : un depot situe au chef-lieu d'une
     destination livrable produit une distance nulle que le solveur
     interpreterait comme une livraison gratuite.
 
-    Depuis D14 aucune paire n'est plus concernee ; la fonction est conservee
+    Aucune paire n'est plus concernee ; la fonction est conservee
     comme garde-fou si une future destination venait a coincider avec un depot.
 
     La matrice d'origine n'est pas modifiee.
@@ -168,7 +168,7 @@ def sauvegarder(matrice: np.ndarray, noeuds: list[Noeud],
 
 
 # ---------------------------------------------------------------------------
-# Couche de persistance et de cache (S4 J2)
+# Couche de persistance et de cache
 # ---------------------------------------------------------------------------
 
 def empreinte_noeuds(noeuds: list[Noeud]) -> str:
@@ -250,7 +250,7 @@ def obtenir_matrice(db, dossier: Path = DOSSIER_DONNEES,
     return matrice, noeuds, motif
 
 # ---------------------------------------------------------------------------
-# Matrice routiere (S4 J3) - lecture seule
+# Matrice routiere - lecture seule
 # ---------------------------------------------------------------------------
 #
 # Contrairement a la matrice geodesique, la matrice routiere ne peut pas etre

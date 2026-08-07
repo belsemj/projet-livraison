@@ -1,4 +1,4 @@
-"""S7 J3 : table lot_non_servi (lots abandonnes par run + raison)
+"""table lot_non_servi (lots abandonnes par run + raison)
 
 Persiste, PAR RUN, les lots que le solveur n'a pas livres et la raison typee
 (abandon_solveur / capacite_locale / echec_solveur). Ferme la divergence J2 :

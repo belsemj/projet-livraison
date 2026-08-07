@@ -1,5 +1,5 @@
 """
-Saisie d'une vague de lots (S7).
+Saisie d'une vague de lots.
 
 POST /vagues : persiste un ensemble de lots saisis au formulaire, sous un
 id_vague genere, et renvoie cet identifiant. Le front enchaine ensuite avec

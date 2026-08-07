@@ -1,5 +1,5 @@
 """
-Evaluation d'une affectation manuelle (Phase 2, S7 J4).
+Evaluation d'une affectation manuelle.
 
 POST /evaluations : recoit une affectation figee par l'humain (vague + couples
 chauffeur/vehicule + lots imposes), controle sa coherence (violations non

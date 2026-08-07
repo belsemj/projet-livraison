@@ -38,7 +38,7 @@ def create_chauffeur(data: ChauffeurCreate, db: Session = Depends(get_db)):
     """
     Cree un chauffeur rattache a un depot.
 
-    Le binome avec un vehicule (D12) ne se declare pas ici mais du cote
+    Le binome avec un vehicule ne se declare pas ici mais du cote
     vehicule, via son champ id_chauffeur.
     """
     _check_depot(db, data.id_depot)
@@ -62,7 +62,7 @@ def update_chauffeur(id_chauffeur: int, data: ChauffeurUpdate, db: Session = Dep
                summary="Supprimer un chauffeur", responses=INTROUVABLE)
 def delete_chauffeur(id_chauffeur: int, db: Session = Depends(get_db)):
     """
-    Suppression physique (question ouverte Q7). Si le chauffeur est en binome,
+    Suppression physique . Si le chauffeur est en binome,
     le vehicule conserve une reference devenue orpheline.
     """
     obj = crud.delete_chauffeur(db, id_chauffeur)

@@ -1,9 +1,9 @@
 """
-Exposition en lecture seule de la matrice de distances (S4 J4).
+Exposition en lecture seule de la matrice de distances.
 
 Trois usages :
   - /distances/noeuds   : referentiel index <-> entite, indispensable pour
-                          interpreter toute sortie du solveur (S5)
+                          interpreter toute sortie du solveur 
   - /distances/{i}/{j}  : verification ponctuelle d'une distance
   - /distances/matrice  : extraction d'un sous-bloc
 
@@ -176,7 +176,7 @@ def lire_distance(
     """
     Distance en km du noeud `i` vers le noeud `j`.
 
-    Attention : pour `source=routier` l'ordre est significatif (D16).
+    Attention : pour `source=routier` l'ordre est significatif.
     La distance de i vers j peut differer de celle de j vers i.
     """
     matrice, noeuds, _ = _charger(db, source)

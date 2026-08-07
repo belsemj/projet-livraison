@@ -1,8 +1,8 @@
 """
-Recalibrage de la limite de temps sur le probleme DECOMPOSE (S6 J1).
+Recalibrage de la limite de temps sur le probleme DECOMPOSE.
 
-Le budget de 60 s a ete calibre au S5 J3 sur le probleme MONOLITHIQUE,
-avant la contrainte de station source (S5 J4) qui decoupe le probleme en
+Le budget de 60 s a ete calibre sur le probleme MONOLITHIQUE,
+avant la contrainte de station source qui decoupe le probleme en
 cinq sous-problemes independants, plus faciles. Ce script rebalaie la
 limite de temps sur la configuration de PRODUCTION (caissons + source
 actifs, valeurs par defaut de resoudre) pour situer le plateau et, le cas

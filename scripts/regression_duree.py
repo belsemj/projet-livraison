@@ -2,8 +2,7 @@
 """
 Brique methodologique : prediction de la DUREE D'UNE TOURNEE (en minutes).
 
-Contexte S8 J3 : pas de donnees historiques reelles (Q3). On demontre donc le
-PIPELINE de regression sur des donnees SIMULEES, pas la performance predictive
+On demontre le PIPELINE de regression sur des donnees SIMULEES, pas la performance predictive
 sur la realite.
 
 --- Piege evite : la circularite ---------------------------------------------
@@ -18,8 +17,8 @@ regression, le R2 frole 1 et ne prouve rien. Pour rester honnete :
 
 Le R2 obtenu est ELEVE parce que le bruit simule est faible PAR CONSTRUCTION :
 l'objectif est de verifier que le pipeline retrouve le modele documente, pas de
-simuler la variabilite reelle. Sur des durees reelles (Q3), le R2 sera
-nettement plus bas -- c'est attendu et a ecrire tel quel dans le rapport.
+simuler la variabilite reelle. Sur des durees reelles, le R2 sera
+nettement plus bas.
 
 --- Transferabilite (quand les vraies durees arriveront) ---------------------
 Le pipeline (features -> modele -> evaluation) ne bouge pas. Il suffira de
@@ -49,12 +48,6 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 SEED = 42
 N = 600  # nb de tournees simulees (assez pour une eval stable)
 
-# =============================================================================
-#  MODELE GENERATIF DOCUMENTE  (duree en MINUTES)
-#  Hypotheses metier ; a valider par M. Zghili, a remplacer par les vraies
-#  mesures des que Q3 est disponible. Additif ; seule non-linearite : une
-#  legere congestion sur les tres longues distances.
-# =============================================================================
 VITESSE_KMH = 50.0                 # vitesse moyenne reseau tunisien (mixte) -> 1.2 min/km
 CONGESTION_LONG = 0.05             # +5% de conduite sur les tres longues distances
 SERVICE_BASE_MIN = 12.0            # temps de base par arret (min)

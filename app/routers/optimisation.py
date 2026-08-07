@@ -1,11 +1,11 @@
 """
-Lancement du solveur et persistance du resultat (S6 J1 ; vague S7).
+Lancement du solveur et persistance du resultat.
 
 POST /optimisations : construit le contexte a partir de l'etat courant de la
 base (eventuellement restreint a une vague de lots), execute le solveur MDVRP
 en synchrone, persiste les tournees non vides et leurs affectations sous un
 nouvel id_run, et renvoie un resume. Le detail imbrique (tournees +
-affectations) est du ressort de GET /runs/{id_run} (J2).
+affectations) est du ressort de GET /runs/{id_run}.
 
 Seule ecriture cote optimisation. Aucune logique metier n'est ajoutee ici :
 on orchestre lecture des donnees, appel au solveur, ecriture du resultat.

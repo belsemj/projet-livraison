@@ -1,5 +1,5 @@
 """
-S4 J3 - Etape 4 : generation de la matrice routiere complete.
+generation de la matrice routiere complete.
 
 Usage :
     python scripts/build_routier.py

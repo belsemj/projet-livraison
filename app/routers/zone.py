@@ -20,7 +20,7 @@ def lire_zones(
 
     Independant de tout run : une destination appartient a sa zone quel que
     soit le run. Distinct de /runs/{id_run}/carte-json (statut servie/
-    abandonnee, propre a un run) et de la partition D32 par depot.
+    abandonnee, propre a un run) et de la partition par depot.
 
     Sortie :
       {

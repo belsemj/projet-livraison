@@ -1,8 +1,8 @@
 """
-Supprime les lots de test residuels (defaut 121-129) -- S7 J3, point 4.
+Supprime les lots de test residuels (defaut 121-129)
 
 Ces lots sont des doublons de saisie qui saturaient volontairement les depots
-pour tester l'abandon (S7 J3). Une fois la fonctionnalite validee, on rend la
+pour tester l'abandon. Une fois la fonctionnalite validee, on rend la
 base de demo propre.
 
 Deux temps (regle "audit avant write") :
